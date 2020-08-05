@@ -1,5 +1,5 @@
 [package]
-name = "crypto"
+name = "warp-crypto"
 version = "0.1.0"
 authors = ["Preston Evans <pbevans1@crimson.ua.edu>"]
 edition = "2018"
@@ -8,3 +8,6 @@ edition = "2018"
 
 [dependencies]
 rust-crypto = "0.2.6"
+
+[dev-dependencies]
+hex = "0.4.2"

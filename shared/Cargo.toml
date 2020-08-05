@@ -8,5 +8,5 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1"
-crypto = { path = "../crypto" }
+warp-crypto = { path = "../crypto" }
 hex = "0.4.2"

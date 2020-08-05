@@ -20,13 +20,6 @@ name = "config"
 version = "0.1.0"
 
 [[package]]
-name = "crypto"
-version = "0.1.0"
-dependencies = [
- "rust-crypto",
-]
-
-[[package]]
 name = "daemon"
 version = "0.1.0"
 dependencies = [
@@ -63,6 +56,7 @@ version = "0.1.0"
 dependencies = [
  "config",
  "shared",
+ "warp-crypto",
 ]
 
 [[package]]
@@ -136,8 +130,8 @@ name = "shared"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "crypto",
  "hex",
+ "warp-crypto",
 ]
 
 [[package]]
@@ -148,6 +142,13 @@ checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "warp-crypto"
+version = "0.1.0"
+dependencies = [
+ "rust-crypto",
 ]
 
 [[package]]
