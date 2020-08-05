@@ -10,8 +10,13 @@ edition = "2018"
 daemon = { path = "daemon" }
 networking = { path = "networking" }
 shared = { path = "shared" }
-
+warp-crypto = { path = "crypto" }
 
 [[bin]]
 name = "main"
 path = "daemon/src/bin/main.rs"
+
+[workspace]
+members = [
+    "networking",
+]

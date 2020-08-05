@@ -1,2 +1,2 @@
 mod config;
-pub use config::{Config, Network, NetworkConfig};
+pub use self::config::{Config, Network, NetworkConfig};
