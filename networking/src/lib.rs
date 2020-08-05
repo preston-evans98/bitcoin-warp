@@ -40,6 +40,10 @@ impl Message {
         self.header.append(self.body.len() as u32);
         self.header.append(&self.body.double_sha256()[..4])
     }
+
+    pub fn dump_header(&self) -> String {
+        self.header.hex()
+    }
 }
 
 #[cfg(test)]
@@ -51,6 +55,5 @@ mod tests {
     fn test_verack() {
         let mut message = Message::new();
         message.create_header(Command::Verack, &Config::mainnet());
-        eprintln!("Header: {:?} ", message.header);
     }
 }

@@ -11,6 +11,10 @@ impl Bytes {
         Bytes(vec![])
     }
 
+    pub fn from(target: Vec<u8>) -> Bytes {
+        Bytes(target)
+    }
+
     pub fn append<T>(&mut self, item: T)
     where
         T: Serializable,
