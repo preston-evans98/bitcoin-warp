@@ -13,7 +13,7 @@ const WARP_PORT_REGTEST: usize = 18444;
 #[derive(Debug)]
 pub struct Config {
     client_version: String,
-    protocol_version: usize,
+    protocol_version: u32,
     services: u64,
     ip_address: std::net::IpAddr,
     user_agent: String,
@@ -85,5 +85,11 @@ impl Config {
     }
     pub fn magic(&self) -> u32 {
         self.network_config.magic
+    }
+    pub fn get_protocol_version(&self) -> u32{
+        self.protocol_version
+    }
+    pub fn set_protocol_version(&mut self, version: u32){
+        self.protocol_version = version;
     }
 }

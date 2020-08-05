@@ -4,12 +4,14 @@ use shared::Serializable;
 pub enum Command {
     Version,
     Verack,
+    GetBlocks
 }
 impl Command {
     fn bytes(&self) -> &[u8; 12] {
         match self {
             Command::Version => b"version\0\0\0\0\0",
             Command::Verack => b"verack\0\0\0\0\0\0",
+            Command::GetBlocks => b"getblocks\0\0\0",
         }
     }
 }
