@@ -2,7 +2,7 @@ use config::Config;
 
 #[derive(Debug)]
 pub struct Daemon {
-    config: Config,
+    pub config: Config,
 }
 
 #[derive(Debug)]
