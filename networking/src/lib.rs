@@ -19,12 +19,12 @@ mod tests {
         )
     }
     #[test]
-    fn test_getblocks(){
+    fn test_getblocks() {
         let mut message = Message::new();
         let mut conf = Config::mainnet();
         conf.set_protocol_version(70001 as u32);
         //message.create_header_for_body(Command::GetBlocks,&conf);
-        message.create_getblocks_body(&vec![], &conf);
+        message.create_getblocks_body(&vec![], true, &conf);
         assert_eq!(
             message.get_body().hex(),
             "71110100000000000000000000000000000000000000000000000000000000000000000000"

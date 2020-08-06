@@ -1,6 +1,6 @@
 use crate::command::Command;
 use config::Config;
-use shared::Bytes;
+use shared::{u256, Bytes, CompactInt};
 
 pub struct Message {
     header: Bytes,
@@ -33,17 +33,19 @@ impl Message {
         &self.body
     }
 
-    pub fn create_getblocks_body(&mut self, _block_hashes: &Vec<Bytes>, config: &Config){  
-        self.body.append(config.get_protocol_version());  //version number
-        self.body.append(00 as u8); //hash count
-        //self.body.append(0000000000000000000000000000000000000000000000000000000000000000); //last block header hashes from heighest height to lowest-height 
-        self.body.append(0 as u64); //the header hash of the last header hash being requested
-        self.body.append(0 as u64); //the header hash of the last header hash being requested
-        self.body.append(0 as u64); //the header hash of the last header hash being requested
-        self.body.append(0 as u64); //the header hash of the last header hash being requested
-
-        // Will need to get a list of the last blocks from the database and insert them here TODO
+    pub fn create_getblocks_body(
+        &mut self,
+        block_hashes: &Vec<Bytes>,
+        request_inventory: bool,
+        config: &Config,
+    ) {
+        self.body.append(config.get_protocol_version()); //version number
+        self.body.append(CompactInt::from(block_hashes.len())); //hash count
+        for hash in block_hashes.iter() {
+            self.body.append(hash)
+        }
+        if request_inventory {
+            self.body.append(u256::new());
+        }
     }
-
-
 }

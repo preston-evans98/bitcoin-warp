@@ -1,4 +1,4 @@
-use crate::serializable::Serializable;
+use crate::Serializable;
 use hex;
 use warp_crypto::double_sha256;
 
@@ -30,5 +30,11 @@ impl Bytes {
 
     pub fn hex(&self) -> String {
         hex::encode(&self.0)
+    }
+}
+
+impl Serializable for &Bytes {
+    fn serialize(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(&self.0)
     }
 }
