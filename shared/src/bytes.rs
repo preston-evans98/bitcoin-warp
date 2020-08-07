@@ -1,4 +1,4 @@
-use crate::Serializable;
+use crate::{Serializable, BigEndianSerializable};
 use hex;
 use warp_crypto::double_sha256;
 
@@ -31,10 +31,19 @@ impl Bytes {
     pub fn hex(&self) -> String {
         hex::encode(&self.0)
     }
-}
+    pub fn get_bytes(&self) -> &Vec<u8>{
+        &self.0
+    }
+    pub fn append_big_endian<T>(&mut self, item: T)
+    where
+        T: BigEndianSerializable,
+    {
+        item.serialize(&mut self.0)
+    }}
 
 impl Serializable for &Bytes {
     fn serialize(&self, target: &mut Vec<u8>) {
         target.extend_from_slice(&self.0)
     }
 }
+

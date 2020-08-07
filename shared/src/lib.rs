@@ -1,5 +1,5 @@
 mod serializable;
-pub use serializable::Serializable;
+pub use serializable::{Serializable, BigEndianSerializable};
 
 mod bytes;
 pub use bytes::Bytes;
@@ -9,3 +9,4 @@ pub use compact::CompactInt;
 
 mod bigint;
 pub use bigint::u256;
+

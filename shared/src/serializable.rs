@@ -1,7 +1,10 @@
-use byteorder::{LittleEndian, WriteBytesExt};
+use byteorder::{LittleEndian, WriteBytesExt, BigEndian};
 use std::net::{IpAddr, Ipv6Addr,Ipv4Addr};
 
 pub trait Serializable {
+    fn serialize(&self, target: &mut Vec<u8>);
+}
+pub trait BigEndianSerializable {
     fn serialize(&self, target: &mut Vec<u8>);
 }
 
@@ -13,6 +16,11 @@ impl Serializable for u8 {
 impl Serializable for u16 {
     fn serialize(&self, target: &mut Vec<u8>) {
         target.write_u16::<LittleEndian>(*self).unwrap();
+    }
+}
+impl BigEndianSerializable for u16{
+    fn serialize(&self, target: &mut Vec<u8>) {
+        target.write_u16::<BigEndian>(*self).unwrap();
     }
 }
 impl Serializable for u32 {

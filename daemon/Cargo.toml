@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 config = { path = "../config" }
 networking = { path = "../networking" }
+hex = "0.4.2"

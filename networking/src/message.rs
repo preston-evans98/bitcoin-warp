@@ -7,6 +7,7 @@ use std::net::Ipv4Addr;
 pub struct Message {
     header: Bytes,
     body: Bytes,
+    contents: Bytes,
 }
 
 impl Message {
@@ -14,6 +15,7 @@ impl Message {
         Message {
             header: Bytes::new(),
             body: Bytes::new(),
+            contents: Bytes::new(),
         }
     }
 
@@ -21,7 +23,10 @@ impl Message {
         self.header.append(config.magic());
         self.header.append(command);
         self.header.append(self.body.len() as u32);
-        self.header.append(&self.body.double_sha256()[..4])
+        self.header.append(&self.body.double_sha256()[..4]);
+
+        self.contents.append(&self.header);         //concatenating the header and body together
+        self.contents.append(&self.body);
     }
 
     pub fn dump_header(&self) -> String {
@@ -36,6 +41,12 @@ impl Message {
     }
     pub fn dump_body(&self) -> String {
         self.body.hex()
+    }
+    pub fn get_contents(&self) -> &Bytes {
+        &self.contents
+    }
+    pub fn dump_contents(&self) -> String {
+        self.contents.hex()
     }
 
     pub fn create_getblocks_body(
@@ -56,7 +67,7 @@ impl Message {
 
     pub fn create_version_body(&mut self, config: &Config){
         self.body.append(config.get_protocol_version());  //version number
-        self.body.append(010 as u64); //services of trasnmitting node 
+        self.body.append(01 as u64); //services of trasnmitting node 
 
         let start = SystemTime::now();
         let since_the_epoch = start
@@ -65,17 +76,17 @@ impl Message {
             .as_secs_f64();
         println!("{:?}", since_the_epoch);
         self.body.append(since_the_epoch as u64); //timestamp
-        self.body.append(010 as u64); //services of recieving address
-        self.body.append(Ipv4Addr::new(192, 168, 1, 2).to_ipv6_mapped());// ip addr of recieving node, need to pass in ip address from another method eventually TODO
-        self.body.append(8333 as u16); //receiving node port number
-        self.body.append(010 as u64); //services of trasnmitting node 
+        self.body.append(01 as u64); //services of recieving address
+        self.body.append(Ipv4Addr::new(127, 0, 0, 1).to_ipv6_mapped());// ip addr of recieving node, need to pass in ip address from another method eventually TODO
+        self.body.append_big_endian(8333 as u16); //receiving node port number
+        self.body.append(01 as u64); //services of trasnmitting node 
         self.body.append(Ipv4Addr::new(127, 0, 0, 1).to_ipv6_mapped());//ip addr of transmitting node, need to pass in ip address from another method eventually TODO
-        self.body.append(8333 as u16); //transmitting node port number
+        self.body.append_big_endian(8333 as u16); //transmitting node port number
         self.body.append(0 as u64); //nonce
-        self.body.append(0b0 as u8); //user agent
+        self.body.append(CompactInt::from(0)); //user agent
         //user agent string is optinal depending on number of bytes sent on line above
-        self.body.append(0 as u32 ); //best block height
-        
+        self.body.append(1 as u32); //best block height
+        //relay flag
         
     }
 }
