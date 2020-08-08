@@ -11,6 +11,7 @@ daemon = { path = "daemon" }
 networking = { path = "networking" }
 shared = { path = "shared" }
 warp-crypto = { path = "crypto" }
+hex = "0.4.2"
 
 [[bin]]
 name = "main"
