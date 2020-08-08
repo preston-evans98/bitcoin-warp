@@ -30,4 +30,20 @@ mod tests {
             "71110100000000000000000000000000000000000000000000000000000000000000000000"
         )
     }
+
+    use std::net::Ipv4Addr;
+    #[test]
+    fn test_tcp_message() {
+        let mut msg = Message::new();
+            msg.create_version_body(&Config::mainnet());
+            msg.create_header_for_body(Command::Version, &Config::mainnet());
+            println!("{:?} {:?}",msg.dump_header(),msg.dump_body());
+            println!("{:?}",msg.dump_contents());
+            println!("{:?}",msg.get_contents().get_bytes());
+
+        assert_eq!(
+            msg.dump_body(),
+            "721101000100000000000000bc8f5e5400000000010000000000000000000000000000000000ffffc61b6409208d010000000000000000000000000000000000ffffcb0071c0208d128035cbc97953f80f2f5361746f7368693a302e392e332fcf05050001"
+        )
+    }
 }

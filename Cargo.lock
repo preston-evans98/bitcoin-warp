@@ -5,6 +5,7 @@ name = "bitcoin-warp"
 version = "0.1.0"
 dependencies = [
  "daemon",
+ "hex",
  "networking",
  "shared",
  "warp-crypto",
