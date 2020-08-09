@@ -10,3 +10,4 @@ edition = "2018"
 config = { path = "../config" }
 shared = { path = "../shared" }
 warp-crypto = { path = "../crypto" }
+futures = "0.3.5"

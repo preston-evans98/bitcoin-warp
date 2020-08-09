@@ -4,6 +4,12 @@ pub use command::Command;
 mod message;
 pub use message::Message;
 
+mod peer;
+pub use peer::Peer;
+
+mod peer_connect;
+pub use peer_connect::outbound_connection;
+
 #[cfg(test)]
 mod tests {
     use crate::Command;
@@ -31,19 +37,19 @@ mod tests {
         )
     }
 
-    use std::net::Ipv4Addr;
-    #[test]
-    fn test_tcp_message() {
-        let mut msg = Message::new();
-            msg.create_version_body(&Config::mainnet());
-            msg.create_header_for_body(Command::Version, &Config::mainnet());
-            println!("{:?} {:?}",msg.dump_header(),msg.dump_body());
-            println!("{:?}",msg.dump_contents());
-            println!("{:?}",msg.get_contents().get_bytes());
+    // use std::net::Ipv4Addr;
+    // #[test]
+    // fn test_tcp_message() {
+    //     let mut msg = Message::new();
+    //         msg.create_version_body(&Config::mainnet());
+    //         msg.create_header_for_body(Command::Version, &Config::mainnet());
+    //         println!("{:?} {:?}",msg.dump_header(),msg.dump_body());
+    //         println!("{:?}",msg.dump_contents());
+    //         println!("{:?}",msg.get_contents().get_bytes());
 
-        assert_eq!(
-            msg.dump_body(),
-            "721101000100000000000000bc8f5e5400000000010000000000000000000000000000000000ffffc61b6409208d010000000000000000000000000000000000ffffcb0071c0208d128035cbc97953f80f2f5361746f7368693a302e392e332fcf05050001"
-        )
-    }
+    //     assert_eq!(
+    //         msg.dump_body(),
+    //         "721101000100000000000000bc8f5e5400000000010000000000000000000000000000000000ffffc61b6409208d010000000000000000000000000000000000ffffcb0071c0208d128035cbc97953f80f2f5361746f7368693a302e392e332fcf05050001"
+    //     )
+    // }
 }
