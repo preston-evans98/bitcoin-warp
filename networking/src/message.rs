@@ -19,8 +19,8 @@ impl Message {
         }
     }
 
-    pub fn create_header_for_body(&mut self, command: Command, config: &Config) {
-        self.header.append(config.magic());
+    pub fn create_header_for_body(&mut self, command: Command, magic: u32) {
+        self.header.append(magic);
         self.header.append(command);
         self.header.append(self.body.len() as u32);
         self.header.append(&self.body.double_sha256()[..4]);
@@ -69,10 +69,10 @@ impl Message {
         &mut self,
         self_addr: &SocketAddr,
         addr: &SocketAddr,
-        config: &Config,
+        protocol_version: u32,
     ) {
         // Should be 85 bytes (no user agent)
-        self.body.append(config.get_protocol_version()); //version number 4
+        self.body.append(protocol_version); //version number 4
         self.body.append(01 as u64); //services of trasnmitting node 12
 
         let start = SystemTime::now();
