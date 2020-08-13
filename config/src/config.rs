@@ -86,10 +86,13 @@ impl Config {
     pub fn magic(&self) -> u32 {
         self.network_config.magic
     }
-    pub fn get_protocol_version(&self) -> u32{
+    pub fn get_protocol_version(&self) -> u32 {
         self.protocol_version
     }
-    pub fn set_protocol_version(&mut self, version: u32){
+    pub fn set_protocol_version(&mut self, version: u32) {
         self.protocol_version = version;
+    }
+    pub fn get_services(&self) -> u64 {
+        self.services
     }
 }
