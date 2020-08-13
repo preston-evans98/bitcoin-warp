@@ -8,10 +8,12 @@ edition = "2018"
 
 [dependencies]
 daemon = { path = "daemon" }
+config = { path = "config" }
 networking = { path = "networking" }
 shared = { path = "shared" }
 warp-crypto = { path = "crypto" }
 hex = "0.4.2"
+tokio = { version = "0.2.22", features = ["full"] }
 
 [[bin]]
 name = "main"
