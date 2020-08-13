@@ -12,7 +12,7 @@ pub enum Version {
 
 pub async fn outbound_connection(peer: &mut Peer) -> Result<(), PeerError> {
     peer.send(Command::Version); //sending version message
-    let version_response = peer.receive().await;
+    let version_response = peer.receive(None).await.unwrap();
     match version_response {
         Command::Version => {
             peer.send(Command::Verack);
@@ -24,7 +24,7 @@ pub async fn outbound_connection(peer: &mut Peer) -> Result<(), PeerError> {
             )))
         }
     }
-    let verack_response = peer.receive().await;
+    let verack_response = peer.receive(None).await.unwrap();
     match verack_response {
         Command::Verack => return Ok(()),
         _ => {

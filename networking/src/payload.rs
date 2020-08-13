@@ -1,16 +1,17 @@
-use std::net::SocketAddr;
 use crate::command::Command;
-use shared::{Bytes};
+use shared::Bytes;
+use std::net::SocketAddr;
 
-
-pub enum Payload{
-    VersionPayload{
-        command: Command,
-		peer_ip: &SocketAddr,
-		daemon_ip: &SocketAddr
+pub enum Payload<'a> {
+    VersionPayload {
+        peer_ip: &'a SocketAddr,
+        peer_services: u64,
+        daemon_ip: &'a SocketAddr,
+        daemon_services: u64,
+        best_block: u32,
     },
-    GetBlocks{
+    GetBlocks {
         command: Command,
         block_hashes: Vec<Bytes>,
-    }
+    },
 }
