@@ -27,34 +27,27 @@ impl Message {
                 peer_ip,
                 peer_services,
                 daemon_ip,
-                daemon_services,
                 best_block,
             } => {
                 let mut msg = Message::new();
-
                 // Should be 85 bytes (no user agent)
-                msg.body.append(config.get_protocol_version()); //version number 4
-                msg.body.append(01 as u64); //services of trasnmitting node 12
-
-                let start = SystemTime::now();
-                let since_the_epoch = start
-                    .duration_since(UNIX_EPOCH)
-                    .expect("Time went backwards")
-                    .as_secs_f64();
-
-                msg.body.append(since_the_epoch as u64); //timestamp 20
-                msg.body.append(01 as u64); //services of recieving address 28
-                println!("Target ip: {}", peer_ip.ip());
-                msg.body.append(*peer_ip); // ip addr of recieving node
-                msg.body.append(*peer_services); //services of trasnmitting node
-                println!("Own ip: {}", daemon_ip.ip());
-                msg.body.append(*daemon_ip); //ip addr of transmitting node
-
-                msg.body.append(0 as u64); //nonce
-                msg.body.append(CompactInt::from(0)); //user agent
-                                                      //user agent string is optinal depending on number of bytes sent on line above
-                msg.body.append(*best_block); //best block height
-                                              //relay flag
+                // Generic info
+                msg.body.append(config.get_protocol_version());
+                msg.body.append(config.get_services());
+                msg.body.append(secs_since_the_epoch());
+                // Peer services and network info
+                msg.body.append(*peer_services);
+                msg.body.append(*peer_ip);
+                // Self services and network info
+                msg.body.append(config.get_services());
+                msg.body.append(*daemon_ip);
+                // Nonce and user agent
+                msg.body.append(0 as u64);
+                msg.body.append(CompactInt::from(0));
+                //(OPTIONAL - Omitted) user agent string is optinal depending on number of bytes sent on line above
+                // Best Block and Relay
+                msg.body.append(*best_block);
+                //(OPTIONAL - Omitted) relay flag
                 msg.create_header_for_body(Command::Version, config.magic());
                 return msg;
             }
@@ -120,4 +113,12 @@ impl Message {
     //     protocol_version: u32,
     // ) {
     // }
+}
+
+fn secs_since_the_epoch() -> u64 {
+    let start = SystemTime::now();
+    start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs_f64() as u64
 }

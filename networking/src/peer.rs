@@ -27,33 +27,33 @@ impl fmt::Display for PeerError {
     }
 }
 
-pub struct Peer {
+pub struct Peer<'a> {
     peer_id: usize,
-    services: u64,
-    version: u32,
     ip_address: SocketAddr,
     nonce: u64,
     daemon_address: SocketAddr,
-    magic: u32,
     daemon_protocol_version: u32,
-    daemon_services: u64,
+    services: u64,
     connection: TcpStream,
+    config: &'a Config,
 }
 
-impl Peer {
-    pub async fn at_address(id: usize, address: SocketAddr, config: &Config) -> Result<Peer> {
+impl<'a> Peer<'a> {
+    pub async fn at_address(
+        id: usize,
+        address: SocketAddr,
+        config: &'a Config,
+    ) -> Result<Peer<'a>> {
         match timeout(Duration::from_secs(5), TcpStream::connect(address)).await {
             Ok(Ok(connection)) => Ok(Peer {
-                magic: config.magic(),
                 peer_id: id,
-                services: 0,
-                version: 0,
                 ip_address: address,
                 nonce: 0,
                 daemon_address: connection.local_addr().unwrap(),
                 daemon_protocol_version: config.get_protocol_version(),
-                daemon_services: config.get_services(),
+                services: 0,
                 connection: connection,
+                config,
             }),
             Ok(Err(e)) => Err(PeerError::new(format!(
                 "Error connecting to {:?}: {}",
@@ -65,18 +65,16 @@ impl Peer {
             ))),
         }
     }
-    pub async fn from_connection(id: usize, connection: TcpStream, config: &Config) -> Peer {
+    pub async fn from_connection(id: usize, connection: TcpStream, config: &'a Config) -> Peer<'a> {
         Peer {
-            magic: config.magic(),
             peer_id: id,
             services: 0,
-            daemon_services: config.get_services(),
-            version: 0,
             ip_address: connection.peer_addr().unwrap(),
             nonce: 0,
             daemon_address: connection.local_addr().unwrap(),
             daemon_protocol_version: config.get_protocol_version(),
             connection: connection,
+            config,
         }
     }
     pub async fn send(&mut self, command: Command) {
@@ -90,7 +88,7 @@ impl Peer {
                 // msg.create_getblocks_body(block_hashes: &Vec<Bytes>, request_inventory: false, config: &Config)
             }
         }
-        msg.create_header_for_body(command, self.magic);
+        msg.create_header_for_body(command, self.config.magic());
         self.connection.write(msg.get_header().get_bytes());
         self.connection.write(msg.get_body().get_bytes()).await;
     }
@@ -111,7 +109,6 @@ impl Peer {
             peer_ip: &self.ip_address,
             peer_services: self.services,
             daemon_ip: &self.daemon_address,
-            daemon_services: self.daemon_services,
             best_block: self.get_best_block(),
         }
     }

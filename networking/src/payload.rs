@@ -7,7 +7,6 @@ pub enum Payload<'a> {
         peer_ip: &'a SocketAddr,
         peer_services: u64,
         daemon_ip: &'a SocketAddr,
-        daemon_services: u64,
         best_block: u32,
     },
     GetBlocks {

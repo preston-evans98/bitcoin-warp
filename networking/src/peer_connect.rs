@@ -10,12 +10,12 @@ pub enum Version {
     V70015, //TODO add the rest of the versions eventually
 }
 
-pub async fn outbound_connection(peer: &mut Peer) -> Result<(), PeerError> {
-    peer.send(Command::Version); //sending version message
+pub async fn outbound_connection<'a>(peer: &'a mut Peer<'a>) -> Result<(), PeerError> {
+    peer.send(Command::Version).await; //sending version message
     let version_response = peer.receive(None).await.unwrap();
     match version_response {
         Command::Version => {
-            peer.send(Command::Verack);
+            peer.send(Command::Verack).await;
         }
         _ => {
             return Err(PeerError::new(format!(
