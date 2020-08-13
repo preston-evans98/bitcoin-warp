@@ -10,6 +10,9 @@ pub use peer::Peer;
 mod peer_connect;
 pub use peer_connect::outbound_connection;
 
+mod payload;
+pub use payload::Payload;
+
 #[cfg(test)]
 mod tests {
     use crate::Command;

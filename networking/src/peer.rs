@@ -80,7 +80,7 @@ impl Peer {
         let mut msg = Message::new();
         match command {
             Command::Version => {
-                Message::from(Command::Version, &self, &Config::mainnet());
+                Message::from(Command::Version, &Config::mainnet());
             }
             Command::Verack => {}
             Command::GetBlocks => {
