@@ -2,20 +2,28 @@ use crate::command::Command;
 use crate::message::Message;
 use crate::peer::Peer;
 use futures::Future;
+use std::fmt;
 // use tokio_io::{AsyncRead, AsyncWrite};
 
 pub enum Version {
-    V70015,
+    V70015, //TODO add the rest of the versions eventually
 }
-pub struct Error {
+#[derive(Debug)]
+pub struct PeerError {
     message: String,
 }
-impl Error {
-    pub fn new(message: String) -> Error {
-        Error { message }
+impl PeerError {
+    pub fn new(message: String) -> PeerError {
+        PeerError { message }
     }
 }
-pub async fn outbound_connection(peer: Peer) -> Result<(), Error> {
+impl fmt::Display for PeerError{
+    fn fmt(&self, f: &mut fmt::Formatter) -> std::result::Result<(), std::fmt::Error>{
+        write!(f,"A peer inccured the following error:{}",self.message);
+        Ok(())
+    }
+}
+pub async fn outbound_connection(peer: Peer) -> Result<(), PeerError> {
     peer.send(Command::Version); //sending version message
     let version_response = peer.receive().await;
     match version_response {
@@ -23,7 +31,7 @@ pub async fn outbound_connection(peer: Peer) -> Result<(), Error> {
             peer.send(Command::Verack);
         }
         _ => {
-            return Err(Error::new(format!(
+            return Err(PeerError::new(format!(
                 "Expected Version message but got {:?}",
                 version_response
             )))
@@ -33,7 +41,7 @@ pub async fn outbound_connection(peer: Peer) -> Result<(), Error> {
     match verack_response {
         Command::Verack => return Ok(()),
         _ => {
-            return Err(Error::new(format!(
+            return Err(PeerError::new(format!(
                 "Expected Verack message but got {:?}",
                 verack_response
             )))

@@ -1,5 +1,6 @@
 use crate::command::Command;
 use config::Config;
+use crate::peer::Peer;
 use shared::{u256, Bytes, CompactInt};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -19,6 +20,63 @@ impl Message {
         }
     }
 
+    pub fn from(&self, command:Command,  peer: &Peer, config: &Config) -> Message {
+        match command{
+
+            Command::Version =>{
+                let msg = Message::new();
+
+                // Should be 85 bytes (no user agent)
+                msg.body.append(config.get_protocol_version()); //version number 4
+                msg.body.append(01 as u64); //services of trasnmitting node 12
+
+                let start = SystemTime::now();
+                let since_the_epoch = start
+                    .duration_since(UNIX_EPOCH)
+                    .expect("Time went backwards")
+                    .as_secs_f64();
+
+                msg.body.append(since_the_epoch as u64); //timestamp 20
+                msg.body.append(01 as u64); //services of recieving address 28
+                println!("Target ip: {}", peer.get_ip_address().ip());
+                msg.body.append(peer.get_ip_address().ip()); // ip addr of recieving node, need to pass in ip address from another method eventually TODO
+                msg.body.append_big_endian(peer.get_ip_address().port() as u16); //receiving node port number
+                msg.body.append(01 as u64); //services of trasnmitting node
+                println!("Own ip: {}", peer.get_daemon_address().ip());
+                msg.body.append(peer.get_daemon_address().ip()); //ip addr of transmitting node, need to pass in ip address from another method eventually TODO
+
+                msg.body.append_big_endian(peer.get_daemon_address().port() as u16); //transmitting node port number
+                msg.body.append(0 as u64); //nonce
+                msg.body.append(CompactInt::from(0)); //user agent
+                                                    //user agent string is optinal depending on number of bytes sent on line above
+                msg.body.append(1 as u32); //best block height
+                                            //relay flag
+                msg.create_header_for_body(Command::Version, config.magic());
+                return msg;
+
+            }
+            Command::GetBlocks => {
+                let msg = Message::new();
+                block_hashes = payload as &Vec<Bytes>;
+                msg.body.append(config.get_protocol_version()); //version number
+                msg.body.append(CompactInt::from(block_hashes.len())); //hash count
+                for hash in block_hashes.iter() {
+                    msg.body.append(hash)
+                }
+                if request_inventory {
+                    msg.body.append(u256::new());
+                }
+                msg.create_header_for_body(Command::GetBlocks, config.magic());
+                return msg
+            }
+            Command::
+            _ => {
+                let msg = Message::new();
+                msg
+            }
+
+        }
+    }
     pub fn create_header_for_body(&mut self, command: Command, magic: u32) {
         self.header.append(magic);
         self.header.append(command);
@@ -49,52 +107,21 @@ impl Message {
         self.contents.hex()
     }
 
-    pub fn create_getblocks_body(
-        &mut self,
-        block_hashes: &Vec<Bytes>,
-        request_inventory: bool,
-        config: &Config,
-    ) {
-        self.body.append(config.get_protocol_version()); //version number
-        self.body.append(CompactInt::from(block_hashes.len())); //hash count
-        for hash in block_hashes.iter() {
-            self.body.append(hash)
-        }
-        if request_inventory {
-            self.body.append(u256::new());
-        }
-    }
+    // pub fn create_getblocks_body(
+    //     &mut self,
+    //     block_hashes: &Vec<Bytes>,
+    //     request_inventory: bool,
+    //     config: &Config,
+    // ) {
+        
+    // }
 
-    pub fn create_version_body(
-        &mut self,
-        self_addr: &SocketAddr,
-        addr: &SocketAddr,
-        protocol_version: u32,
-    ) {
-        // Should be 85 bytes (no user agent)
-        self.body.append(protocol_version); //version number 4
-        self.body.append(01 as u64); //services of trasnmitting node 12
-
-        let start = SystemTime::now();
-        let since_the_epoch = start
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs_f64();
-
-        self.body.append(since_the_epoch as u64); //timestamp 20
-        self.body.append(01 as u64); //services of recieving address 28
-        println!("Target ip: {}", addr.ip());
-        self.body.append(addr.ip()); // ip addr of recieving node, need to pass in ip address from another method eventually TODO
-        self.body.append_big_endian(addr.port() as u16); //receiving node port number
-        self.body.append(01 as u64); //services of trasnmitting node
-        println!("Own ip: {}", self_addr.ip());
-        self.body.append(self_addr.ip()); //ip addr of transmitting node, need to pass in ip address from another method eventually TODO
-
-        self.body.append_big_endian(self_addr.port() as u16); //transmitting node port number
-        self.body.append(0 as u64); //nonce
-        self.body.append(CompactInt::from(0)); //user agent
-                                               //user agent string is optinal depending on number of bytes sent on line above
-        self.body.append(1 as u32); //best block height
-                                    //relay flag
-    }
+    // pub fn create_version_body(
+    //     &mut self,
+    //     self_addr: &SocketAddr,
+    //     addr: &SocketAddr,
+    //     protocol_version: u32,
+    // ) {
+        
+    // }
 }

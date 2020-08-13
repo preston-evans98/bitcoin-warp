@@ -12,6 +12,7 @@ impl Command {
             Command::Version => b"version\0\0\0\0\0",
             Command::Verack => b"verack\0\0\0\0\0\0",
             Command::GetBlocks => b"getblocks\0\0\0",
+            Command::Ge
         }
     }
 }

@@ -82,4 +82,11 @@ impl Peer {
     //     //deserialization call here and return the message
     //     Command::Verack
     // }
+
+    pub fn get_ip_address(&self) -> SocketAddr{
+        self.ip_address
+    }
+    pub fn get_daemon_address(&self) -> SocketAddr{
+        self.daemon_address
+    }
 }
