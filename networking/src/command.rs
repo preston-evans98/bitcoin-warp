@@ -4,7 +4,7 @@ use shared::Serializable;
 pub enum Command {
     Version,
     Verack,
-    GetBlocks
+    GetBlocks,
 }
 impl Command {
     pub fn bytes(&self) -> &[u8; 12] {
@@ -12,7 +12,7 @@ impl Command {
             Command::Version => b"version\0\0\0\0\0",
             Command::Verack => b"verack\0\0\0\0\0\0",
             Command::GetBlocks => b"getblocks\0\0\0",
-            Command::Ge
+            // Command::Ge
         }
     }
 }

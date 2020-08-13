@@ -1,6 +1,7 @@
 use crate::command::Command;
 use crate::message::Message;
 use crate::peer::Peer;
+use crate::peer::PeerError;
 use futures::Future;
 use std::fmt;
 // use tokio_io::{AsyncRead, AsyncWrite};
@@ -8,22 +9,8 @@ use std::fmt;
 pub enum Version {
     V70015, //TODO add the rest of the versions eventually
 }
-#[derive(Debug)]
-pub struct PeerError {
-    message: String,
-}
-impl PeerError {
-    pub fn new(message: String) -> PeerError {
-        PeerError { message }
-    }
-}
-impl fmt::Display for PeerError{
-    fn fmt(&self, f: &mut fmt::Formatter) -> std::result::Result<(), std::fmt::Error>{
-        write!(f,"A peer inccured the following error:{}",self.message);
-        Ok(())
-    }
-}
-pub async fn outbound_connection(peer: Peer) -> Result<(), PeerError> {
+
+pub async fn outbound_connection(peer: &mut Peer) -> Result<(), PeerError> {
     peer.send(Command::Version); //sending version message
     let version_response = peer.receive().await;
     match version_response {

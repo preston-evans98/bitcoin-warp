@@ -1,6 +1,6 @@
 use crate::command::Command;
-use config::Config;
 use crate::peer::Peer;
+use config::Config;
 use shared::{u256, Bytes, CompactInt};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -20,11 +20,10 @@ impl Message {
         }
     }
 
-    pub fn from(&self, command:Command,  peer: &Peer, config: &Config) -> Message {
-        match command{
-
-            Command::Version =>{
-                let msg = Message::new();
+    pub fn from(command: Command, peer: &Peer, config: &Config) -> Message {
+        match command {
+            Command::Version => {
+                let mut msg = Message::new();
 
                 // Should be 85 bytes (no user agent)
                 msg.body.append(config.get_protocol_version()); //version number 4
@@ -40,41 +39,41 @@ impl Message {
                 msg.body.append(01 as u64); //services of recieving address 28
                 println!("Target ip: {}", peer.get_ip_address().ip());
                 msg.body.append(peer.get_ip_address().ip()); // ip addr of recieving node, need to pass in ip address from another method eventually TODO
-                msg.body.append_big_endian(peer.get_ip_address().port() as u16); //receiving node port number
+                msg.body
+                    .append_big_endian(peer.get_ip_address().port() as u16); //receiving node port number
                 msg.body.append(01 as u64); //services of trasnmitting node
                 println!("Own ip: {}", peer.get_daemon_address().ip());
                 msg.body.append(peer.get_daemon_address().ip()); //ip addr of transmitting node, need to pass in ip address from another method eventually TODO
 
-                msg.body.append_big_endian(peer.get_daemon_address().port() as u16); //transmitting node port number
+                msg.body
+                    .append_big_endian(peer.get_daemon_address().port() as u16); //transmitting node port number
                 msg.body.append(0 as u64); //nonce
                 msg.body.append(CompactInt::from(0)); //user agent
-                                                    //user agent string is optinal depending on number of bytes sent on line above
+                                                      //user agent string is optinal depending on number of bytes sent on line above
                 msg.body.append(1 as u32); //best block height
-                                            //relay flag
+                                           //relay flag
                 msg.create_header_for_body(Command::Version, config.magic());
                 return msg;
-
             }
             Command::GetBlocks => {
                 let msg = Message::new();
-                block_hashes = payload as &Vec<Bytes>;
-                msg.body.append(config.get_protocol_version()); //version number
-                msg.body.append(CompactInt::from(block_hashes.len())); //hash count
-                for hash in block_hashes.iter() {
-                    msg.body.append(hash)
-                }
-                if request_inventory {
-                    msg.body.append(u256::new());
-                }
-                msg.create_header_for_body(Command::GetBlocks, config.magic());
-                return msg
+                // block_hashes = payload as &Vec<Bytes>;
+                // msg.body.append(config.get_protocol_version()); //version number
+                // msg.body.append(CompactInt::from(block_hashes.len())); //hash count
+                // for hash in block_hashes.iter() {
+                //     msg.body.append(hash)
+                // }
+                // if request_inventory {
+                //     msg.body.append(u256::new());
+                // }
+                // msg.create_header_for_body(Command::GetBlocks, config.magic());
+                return msg;
             }
-            Command::
-            _ => {
-                let msg = Message::new();
-                msg
-            }
-
+            _ => Message::new(), // Command::
+                                 // _ => {
+                                 //     let msg = Message::new();
+                                 //     msg
+                                 // }
         }
     }
     pub fn create_header_for_body(&mut self, command: Command, magic: u32) {
@@ -113,7 +112,6 @@ impl Message {
     //     request_inventory: bool,
     //     config: &Config,
     // ) {
-        
     // }
 
     // pub fn create_version_body(
@@ -122,6 +120,5 @@ impl Message {
     //     addr: &SocketAddr,
     //     protocol_version: u32,
     // ) {
-        
     // }
 }

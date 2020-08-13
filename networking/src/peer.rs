@@ -1,11 +1,27 @@
 use crate::command::Command;
 use crate::message::Message;
 use config::Config;
+use std::fmt;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
+#[derive(Debug)]
+pub struct PeerError {
+    message: String,
+}
+impl PeerError {
+    pub fn new(message: String) -> PeerError {
+        PeerError { message }
+    }
+}
+impl fmt::Display for PeerError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        write!(f, "A peer inccured the following error:{}", self.message);
+        Ok(())
+    }
+}
 
 pub struct Peer {
     peer_id: usize,
@@ -24,13 +40,8 @@ impl Peer {
         id: usize,
         address: SocketAddr,
         config: &Config,
-    ) -> Result<Peer, std::io::Error> {
-        match timeout(
-            std::time::Duration::from_secs(5),
-            TcpStream::connect(address),
-        )
-        .await
-        {
+    ) -> Result<Peer, PeerError> {
+        match timeout(Duration::from_secs(5), TcpStream::connect(address)).await {
             Ok(Ok(connection)) => Ok(Peer {
                 magic: config.magic(),
                 peer_id: id,
@@ -42,7 +53,14 @@ impl Peer {
                 daemon_protocol_version: config.get_protocol_version(),
                 connection: connection,
             }),
-            Err(e) => Err(e),
+            Ok(Err(e)) => Err(PeerError::new(format!(
+                "Error connecting to {:?}: {}",
+                address, e
+            ))),
+            Err(_) => Err(PeerError::new(format!(
+                "Error connecting to {:?}: Timeout",
+                address
+            ))),
         }
     }
     pub async fn from_connection(id: usize, connection: TcpStream, config: &Config) -> Peer {
@@ -58,15 +76,11 @@ impl Peer {
             connection: connection,
         }
     }
-    pub async fn send(&self, command: Command) {
+    pub async fn send(&mut self, command: Command) {
         let mut msg = Message::new();
         match command {
             Command::Version => {
-                msg.create_version_body(
-                    &self.daemon_address,
-                    &self.ip_address,
-                    self.daemon_protocol_version,
-                );
+                Message::from(Command::Version, &self, &Config::mainnet());
             }
             Command::Verack => {}
             Command::GetBlocks => {
@@ -78,10 +92,10 @@ impl Peer {
         self.connection.write(msg.get_body().get_bytes()).await;
     }
 
-    // pub async fn receive(&self) -> Command {
-    //     //deserialization call here and return the message
-    //     Command::Verack
-    // }
+    pub async fn receive(&self) -> Command {
+        //deserialization call here and return the message
+        Command::Verack
+    }
 
     pub fn get_ip_address(&self) -> SocketAddr {
         self.ip_address

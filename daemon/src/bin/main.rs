@@ -13,10 +13,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let command = Command::Version;
     let config = Config::mainnet();
-    let addr = SocketAddr::from(([192, 168, 1, 7], 25000));
+    let addr = SocketAddr::from(([192, 168, 1, 9], 25000));
     // let addr = SocketAddr::from(([192, 168, 1, 3], 8333));
-    let raspi = Peer::at_address(1, addr, &config).await.unwrap();
-    raspi.send(Command::Version);
+    let mut raspi = Peer::at_address(1, addr, &config).await.unwrap();
+    raspi.send(command).await;
     // execute_command(command, daemon);
     Ok(())
 }
