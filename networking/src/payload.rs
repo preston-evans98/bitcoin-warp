@@ -9,8 +9,8 @@ pub enum Payload<'a> {
         daemon_ip: &'a SocketAddr,
         best_block: u32,
     },
-    GetBlocks {
-        command: Command,
+    GetBlocksPayload {
         block_hashes: Vec<Bytes>,
+        inv_message: bool,
     },
 }
