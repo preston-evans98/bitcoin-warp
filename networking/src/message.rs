@@ -5,6 +5,7 @@ use config::Config;
 use shared::{u256, Bytes, CompactInt};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::{SystemTime, UNIX_EPOCH};
+use log::{warn};
 
 pub struct Message {
     header: Bytes,
@@ -51,21 +52,35 @@ impl Message {
                 msg.create_header_for_body(Command::Version, config.magic());
                 return msg;
             }
-            // Command::GetBlocks => {
-            //     let msg = Message::new();
-            //     msg.body.append(config.get_protocol_version()); //version number
-            //                                                     // msg.body
-            //                                                     //     .append(CompactInt::from(payload.block_hashes.len())); //hash count
-            //                                                     // for hash in block_hashes.iter() {
-            //                                                     //     msg.body.append(hash)
-            //                                                     // }
-            //                                                     // if request_inventory {
-            //                                                     //     msg.body.append(u256::new());
-            //                                                     // }
-            //                                                     // msg.create_header_for_body(Command::GetBlocks, config.magic());
-            //     return msg;
-            // }
-            _ => Message::new(),
+            Payload::GetBlocksPayload{
+                block_hashes,
+                inv_message
+            } => {
+                let mut msg = Message::new();
+                msg.body.append(config.get_protocol_version()); //version number
+                msg.body.append(CompactInt::from(block_hashes.len())); //hash count
+                for hash in block_hashes.iter() {
+                    msg.body.append(hash)
+                }
+                if *inv_message{
+                    msg.body.append(u256::new());
+                }
+                else{
+                    match block_hashes.last(){
+                        Some(hash) =>{
+                            msg.body.append(hash)
+                        }
+                        None => {
+                            warn!("GetBlocks: stop hash was empty");
+                            msg.body.append(u256::new());
+                        }
+                    } 
+                }
+                msg.create_header_for_body(Command::GetBlocks, config.magic());
+                return msg;
+            }
+
+            // _ => Message::new(),
         }
     }
     pub fn create_header_for_body(&mut self, command: Command, magic: u32) {
