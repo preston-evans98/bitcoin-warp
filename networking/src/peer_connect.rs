@@ -2,8 +2,6 @@ use crate::command::Command;
 use crate::message::Message;
 use crate::peer::Peer;
 use crate::peer::PeerError;
-use futures::Future;
-use std::fmt;
 // use tokio_io::{AsyncRead, AsyncWrite};
 
 pub enum Version {
@@ -11,11 +9,11 @@ pub enum Version {
 }
 
 pub async fn outbound_connection<'a>(peer: &'a mut Peer<'a>) -> Result<(), PeerError> {
-    peer.send(Command::Version).await; //sending version message
+    peer.send(Command::Version).await?; //sending version message
     let version_response = peer.receive(None).await?;
     match version_response {
         Command::Version => {
-            peer.send(Command::Verack).await;
+            peer.send(Command::Verack).await?;
         }
         _ => {
             return Err(PeerError::Message(format!(

@@ -33,31 +33,31 @@ impl From<io::Error> for DeserializationError {
         DeserializationError::Io(err)
     }
 }
-type Result<T> = std::result::Result<T, DeserializationError>;
+type Result<R> = std::result::Result<R, DeserializationError>;
 
 pub trait Deserializable {
-    fn deserialize<T>(reader: &mut T) -> Result<Self>
+    fn deserialize<R>(reader: &mut R) -> Result<Self>
     where
         Self: Sized,
-        T: std::io::Read;
+        R: std::io::Read;
 }
 
 impl Deserializable for u32 {
-    fn deserialize<T>(target: &mut T) -> Result<u32>
+    fn deserialize<R>(target: &mut R) -> Result<u32>
     where
-        T: std::io::Read,
+        R: std::io::Read,
     {
         Ok(target.read_u32::<LittleEndian>()?)
     }
 }
 
-// TODO: Replace when const generics stabilize
+// RODO: Replace when const generics stabilize
 macro_rules! impl_deserializable_byte_array {
     ($size:expr) => {
         impl Deserializable for [u8; $size] {
-            fn deserialize<T>(target: &mut T) -> Result<[u8; $size]>
+            fn deserialize<R>(target: &mut R) -> Result<[u8; $size]>
             where
-                T: std::io::Read,
+                R: std::io::Read,
             {
                 let mut result = [0u8; $size];
                 target.read_exact(&mut result)?;

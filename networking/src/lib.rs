@@ -15,6 +15,9 @@ pub use payload::Payload;
 
 mod header;
 
+mod messages;
+pub use messages::Version;
+
 #[cfg(test)]
 mod tests {
     use crate::Command;

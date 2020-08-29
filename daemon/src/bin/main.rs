@@ -4,7 +4,6 @@ use daemon::Daemon;
 use networking::{Command, Message, Peer};
 use std::io::{Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpStream};
-use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

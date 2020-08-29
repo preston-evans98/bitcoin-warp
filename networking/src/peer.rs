@@ -112,9 +112,9 @@ impl<'a> Peer<'a> {
         Ok(())
     }
 
-    pub async fn receive(&mut self, timeoutDuration: Option<Duration>) -> Result<Command> {
+    pub async fn receive(&mut self, timeout_duration: Option<Duration>) -> Result<Command> {
         let mut buf = [0u8; 24];
-        if let Some(duration) = timeoutDuration {
+        if let Some(duration) = timeout_duration {
             timeout(duration, self.connection.read_exact(&mut buf)).await??;
         } else {
             self.connection.read_exact(&mut buf).await?;
