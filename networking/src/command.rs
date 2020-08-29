@@ -5,6 +5,7 @@ pub enum Command {
     Version,
     Verack,
     GetBlocks,
+    GetData,
 }
 impl Command {
     pub fn bytes(&self) -> &[u8; 12] {
@@ -12,7 +13,7 @@ impl Command {
             Command::Version => b"version\0\0\0\0\0",
             Command::Verack => b"verack\0\0\0\0\0\0",
             Command::GetBlocks => b"getblocks\0\0\0",
-            // Command::Ge
+            Command::GetData => b"getdata\0\0\0\0\0",
         }
     }
 }
