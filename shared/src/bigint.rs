@@ -54,3 +54,11 @@ impl Serializable for u256 {
         }
     }
 }
+
+impl Serializable for &u256 {
+    fn serialize(&self, target: &mut Vec<u8>) {
+        for value in self.0.iter() {
+            target.write_u64::<LittleEndian>(*value).unwrap();
+        }
+    }
+}

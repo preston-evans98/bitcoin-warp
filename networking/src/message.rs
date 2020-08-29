@@ -1,11 +1,9 @@
 use crate::command::Command;
 use crate::payload::Payload;
-use crate::peer::Peer;
 use config::Config;
+use log::warn;
 use shared::{u256, Bytes, CompactInt};
-use std::net::{Ipv4Addr, SocketAddr};
 use std::time::{SystemTime, UNIX_EPOCH};
-use log::{warn};
 
 pub struct Message {
     header: Bytes,
@@ -52,9 +50,9 @@ impl Message {
                 msg.create_header_for_body(Command::Version, config.magic());
                 return msg;
             }
-            Payload::GetBlocksPayload{
+            Payload::GetBlocksPayload {
                 block_hashes,
-                inv_message
+                inv_message,
             } => {
                 let mut msg = Message::new();
                 msg.body.append(config.get_protocol_version()); //version number
@@ -62,40 +60,31 @@ impl Message {
                 for hash in block_hashes.iter() {
                     msg.body.append(hash)
                 }
-                if *inv_message{
+                if *inv_message {
                     msg.body.append(u256::new());
-                }
-                else{
-                    match block_hashes.last(){
-                        Some(hash) =>{
-                            msg.body.append(hash)
-                        }
+                } else {
+                    match block_hashes.last() {
+                        Some(hash) => msg.body.append(hash),
                         None => {
                             warn!("GetBlocks: stop hash was empty");
                             msg.body.append(u256::new());
                         }
-                    } 
+                    }
                 }
                 msg.create_header_for_body(Command::GetBlocks, config.magic());
                 return msg;
             }
-            Payload::GetDataPayload{
-                inventory,
-            } => {
+            Payload::GetDataPayload { inventory } => {
                 let mut msg = Message::new();
                 msg.body.append(CompactInt::from(inventory.len()));
-                for x in inventory.iter(){
-                    msg.body.append(x.inventory_type as u32);
-                    msg.body.append(x.hash);
+                for x in inventory.iter() {
+                    msg.body.append(x.inventory_type);
+                    msg.body.append(&x.hash);
                 }
 
                 msg.create_header_for_body(Command::GetData, config.magic());
                 return msg;
-
-            }
-
-
-            // _ => Message::new(),
+            } // _ => Message::new(),
         }
     }
     pub fn create_header_for_body(&mut self, command: Command, magic: u32) {

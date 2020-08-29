@@ -3,7 +3,7 @@ use crate::header::Header;
 use crate::message::Message;
 use crate::payload::Payload;
 use config::Config;
-use shared::{Deserializable, DeserializationError};
+use shared::DeserializationError;
 use std::fmt;
 use std::io::Cursor;
 use std::net::SocketAddr;
@@ -15,29 +15,41 @@ use tokio::time::timeout;
 type Result<T> = std::result::Result<T, PeerError>;
 
 #[derive(Debug)]
-pub struct PeerError {
-    message: String,
-}
-impl PeerError {
-    pub fn new(message: String) -> PeerError {
-        PeerError { message }
-    }
+pub enum PeerError {
+    Timeout(String),
+    Io(std::io::Error),
+    Deserialzation(DeserializationError),
+    Message(String),
 }
 impl From<DeserializationError> for PeerError {
     fn from(kind: DeserializationError) -> PeerError {
-        PeerError::new(format!("Time out error: {}", kind))
+        PeerError::Deserialzation(kind)
+    }
+}
+impl From<tokio::time::Elapsed> for PeerError {
+    fn from(kind: tokio::time::Elapsed) -> PeerError {
+        PeerError::Timeout(kind.to_string())
     }
 }
 impl From<std::io::Error> for PeerError {
     fn from(kind: std::io::Error) -> PeerError {
-        PeerError::new(format!("Could not deserialize: {}", kind))
+        PeerError::Io(kind)
     }
 }
+// impl From<tokio::time::Elapsed> for PeerError {
+//     fn from(kind: tokio::time::Elapsed) -> PeerError {
+//         PeerError::Timeout(kind.to_string())
+//     }
+// }
 
 impl fmt::Display for PeerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
-        write!(f, "A peer inccured the following error:{}", self.message)?;
-        Ok(())
+        match self {
+            PeerError::Timeout(cause) => cause.fmt(f),
+            PeerError::Deserialzation(cause) => cause.fmt(f),
+            PeerError::Io(cause) => cause.fmt(f),
+            PeerError::Message(cause) => cause.fmt(f),
+        }
     }
 }
 
@@ -58,26 +70,17 @@ impl<'a> Peer<'a> {
         address: SocketAddr,
         config: &'a Config,
     ) -> Result<Peer<'a>> {
-        match timeout(Duration::from_secs(5), TcpStream::connect(address)).await {
-            Ok(Ok(connection)) => Ok(Peer {
-                peer_id: id,
-                ip_address: address,
-                nonce: 0,
-                daemon_address: connection.local_addr().unwrap(),
-                daemon_protocol_version: config.get_protocol_version(),
-                services: 0,
-                connection: connection,
-                config,
-            }),
-            Ok(Err(e)) => Err(PeerError::new(format!(
-                "Error connecting to {:?}: {}",
-                address, e
-            ))),
-            Err(_) => Err(PeerError::new(format!(
-                "Error connecting to {:?}: Timeout",
-                address
-            ))),
-        }
+        let connection = timeout(Duration::from_secs(5), TcpStream::connect(address)).await??;
+        Ok(Peer {
+            peer_id: id,
+            ip_address: address,
+            nonce: 0,
+            daemon_address: connection.local_addr().unwrap(),
+            daemon_protocol_version: config.get_protocol_version(),
+            services: 0,
+            connection: connection,
+            config,
+        })
     }
     pub async fn from_connection(id: usize, connection: TcpStream, config: &'a Config) -> Peer<'a> {
         Peer {
@@ -101,6 +104,7 @@ impl<'a> Peer<'a> {
             Command::GetBlocks => {
                 // msg.create_getblocks_body(block_hashes: &Vec<Bytes>, request_inventory: false, config: &Config)
             }
+            Command::GetData => {}
         }
         msg.create_header_for_body(command, self.config.magic());
         self.connection.write(msg.get_header().get_bytes()).await?;
@@ -111,12 +115,7 @@ impl<'a> Peer<'a> {
     pub async fn receive(&mut self, timeoutDuration: Option<Duration>) -> Result<Command> {
         let mut buf = [0u8; 24];
         if let Some(duration) = timeoutDuration {
-            if let Err(e) = timeout(duration, self.connection.read_exact(&mut buf)).await {
-                return Err(PeerError::new(format!(
-                    "Error reading from {:?}: Timeout",
-                    self.ip_address
-                )));
-            }
+            timeout(duration, self.connection.read_exact(&mut buf)).await??;
         } else {
             self.connection.read_exact(&mut buf).await?;
         }

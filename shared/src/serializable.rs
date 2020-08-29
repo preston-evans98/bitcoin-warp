@@ -33,6 +33,7 @@ impl Serializable for u64 {
         target.write_u64::<LittleEndian>(*self).unwrap();
     }
 }
+
 impl Serializable for std::net::Ipv6Addr {
     fn serialize(&self, target: &mut Vec<u8>) {
         target.extend_from_slice(&self.octets());
