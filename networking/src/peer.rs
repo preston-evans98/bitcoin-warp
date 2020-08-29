@@ -1,11 +1,14 @@
 use crate::command::Command;
+use crate::header::Header;
 use crate::message::Message;
 use crate::payload::Payload;
 use config::Config;
+use shared::{Deserializable, DeserializationError};
 use std::fmt;
+use std::io::Cursor;
 use std::net::SocketAddr;
 use std::time::Duration;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 
@@ -20,9 +23,20 @@ impl PeerError {
         PeerError { message }
     }
 }
+impl From<DeserializationError> for PeerError {
+    fn from(kind: DeserializationError) -> PeerError {
+        PeerError::new(format!("Time out error: {}", kind))
+    }
+}
+impl From<std::io::Error> for PeerError {
+    fn from(kind: std::io::Error) -> PeerError {
+        PeerError::new(format!("Could not deserialize: {}", kind))
+    }
+}
+
 impl fmt::Display for PeerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
-        write!(f, "A peer inccured the following error:{}", self.message);
+        write!(f, "A peer inccured the following error:{}", self.message)?;
         Ok(())
     }
 }
@@ -77,7 +91,7 @@ impl<'a> Peer<'a> {
             config,
         }
     }
-    pub async fn send(&mut self, command: Command) {
+    pub async fn send(&mut self, command: Command) -> Result<()> {
         let mut msg = Message::new();
         match command {
             Command::Version => {
@@ -89,13 +103,25 @@ impl<'a> Peer<'a> {
             }
         }
         msg.create_header_for_body(command, self.config.magic());
-        self.connection.write(msg.get_header().get_bytes());
-        self.connection.write(msg.get_body().get_bytes()).await;
+        self.connection.write(msg.get_header().get_bytes()).await?;
+        self.connection.write(msg.get_body().get_bytes()).await?;
+        Ok(())
     }
 
-    pub async fn receive(&self, timeout: Option<Duration>) -> Result<Command> {
-        //deserialization call here and return the message
-        Ok(Command::Verack)
+    pub async fn receive(&mut self, timeoutDuration: Option<Duration>) -> Result<Command> {
+        let mut buf = [0u8; 24];
+        if let Some(duration) = timeoutDuration {
+            if let Err(e) = timeout(duration, self.connection.read_exact(&mut buf)).await {
+                return Err(PeerError::new(format!(
+                    "Error reading from {:?}: Timeout",
+                    self.ip_address
+                )));
+            }
+        } else {
+            self.connection.read_exact(&mut buf).await?;
+        }
+        let header = Header::deserialize(&mut Cursor::new(buf), self.config.magic())?;
+        Ok(header.get_command())
     }
 
     pub fn get_ip_address(&self) -> SocketAddr {
