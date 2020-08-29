@@ -79,6 +79,21 @@ impl Message {
                 msg.create_header_for_body(Command::GetBlocks, config.magic());
                 return msg;
             }
+            Payload::GetDataPayload{
+                inventory,
+            } => {
+                let mut msg = Message::new();
+                msg.body.append(CompactInt::from(inventory.len()));
+                for x in inventory.iter(){
+                    msg.body.append(x.inventory_type as u32);
+                    msg.body.append(x.hash);
+                }
+
+                msg.create_header_for_body(Command::GetData, config.magic());
+                return msg;
+
+            }
+
 
             // _ => Message::new(),
         }
