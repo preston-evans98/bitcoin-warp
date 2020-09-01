@@ -1,9 +1,14 @@
 use crate::command::Command;
 use crate::header::Header;
 use crate::message::Message;
-use crate::payload::Payload;
+use crate::messages::Version;
+use crate::messages::GetBlocks;
+use crate::messages::GetData;
+use crate::messages::InventoryData;
+use crate::messages::InventoryType;
 use config::Config;
-use shared::DeserializationError;
+use shared::{u256, DeserializationError};
+use warp_crypto::double_sha256;
 use std::fmt;
 use std::io::Cursor;
 use std::net::SocketAddr;
@@ -98,13 +103,15 @@ impl<'a> Peer<'a> {
         let mut msg = Message::new();
         match command {
             Command::Version => {
-                Message::from(&self.version_payload(), &Config::mainnet());
+                let message = Version::new(self.ip_address,self.services,self.daemon_address,self.get_best_block(),&Config::mainnet());
             }
             Command::Verack => {}
             Command::GetBlocks => {
-                // msg.create_getblocks_body(block_hashes: &Vec<Bytes>, request_inventory: false, config: &Config)
+                let message: GetBlocks = GetBlocks::new(self.get_block_hashes(),true,&Config::mainnet());
             }
-            Command::GetData => {}
+            Command::GetData => {
+                let message: GetData = GetData::new(self.get_inventory_data(),&Config::mainnet());
+            }
         }
         msg.create_header_for_body(command, self.config.magic());
         self.connection.write(msg.get_header().get_bytes()).await?;
@@ -129,16 +136,19 @@ impl<'a> Peer<'a> {
     pub fn get_daemon_address(&self) -> SocketAddr {
         self.daemon_address
     }
-    pub fn version_payload(&self) -> Payload {
-        Payload::VersionPayload {
-            peer_ip: &self.ip_address,
-            peer_services: self.services,
-            daemon_ip: &self.daemon_address,
-            best_block: self.get_best_block(),
-        }
-    }
 
     pub fn get_best_block(&self) -> u32 {
         1
+    }
+    pub fn get_block_hashes(&self) -> Vec<u256>{
+        //One or more block header hashes (32 bytes each) in internal byte order. 
+        //Hashes should be provided in reverse order of block height, 
+        //so highest-height hashes are listed first and lowest-height hashes are listed last.
+        //should get from the database the block headers needed and hash them here and put them in a vector
+        
+    }
+    pub fn get_inventory_data(&self) -> Vec<InventoryData>{
+        //needs to get the actual data that we want to request from peer and put it in an InventoryData object 
+        
     }
 }

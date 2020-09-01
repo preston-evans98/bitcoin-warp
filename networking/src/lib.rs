@@ -10,13 +10,20 @@ pub use peer::Peer;
 mod peer_connect;
 pub use peer_connect::outbound_connection;
 
-mod payload;
-pub use payload::Payload;
 
 mod header;
 
 mod messages;
 pub use messages::Version;
+pub use messages::GetBlocks;
+pub use messages::GetData;
+pub use messages::InventoryData;
+pub use messages::InventoryType;
+
+
+
+
+
 
 #[cfg(test)]
 mod tests {
