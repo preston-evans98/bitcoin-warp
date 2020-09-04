@@ -9,4 +9,5 @@ edition = "2018"
 [dependencies]
 config = { path = "../config" }
 networking = { path = "../networking" }
+serde_derive = { path = "../serde_derive" }
 hex = "0.4.2"

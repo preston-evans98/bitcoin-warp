@@ -51,7 +51,7 @@ impl Deserializable for u32 {
     }
 }
 
-// RODO: Replace when const generics stabilize
+// TODO: Replace when const generics stabilize
 macro_rules! impl_deserializable_byte_array {
     ($size:expr) => {
         impl Deserializable for [u8; $size] {

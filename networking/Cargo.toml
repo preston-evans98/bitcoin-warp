@@ -10,6 +10,7 @@ edition = "2018"
 config = { path = "../config" }
 shared = { path = "../shared" }
 warp-crypto = { path = "../crypto" }
+serde_derive = { path = "../serde_derive" }
 futures = "0.3.5"
 tokio = { version = "0.2.22", features = ["full"] }
 log = "0.4.11"

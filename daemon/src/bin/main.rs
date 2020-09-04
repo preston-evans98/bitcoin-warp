@@ -1,12 +1,28 @@
 extern crate hex;
+extern crate serde_derive;
 use config::Config;
 use daemon::Daemon;
 use networking::{Command, Message, Peer};
+use serde_derive::{Deserializable, Serializable};
 use std::io::{Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpStream};
 
+#[derive(Serializable, Deserializable, Debug)]
+pub struct MyTestStruct {
+    identifier: u32,
+    contents: [u8; 4],
+}
+
+fn test() {
+    use shared::Deserializable;
+    let inner: [u8; 8] = [1, 2, 3, 4, 1, 2, 3, 4];
+    let test = MyTestStruct::deserialize(&mut std::io::Cursor::new(inner));
+    println!("{:?}", test);
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    test();
     let daemon = Daemon::new();
     // println!("{:?}", daemon);
 
