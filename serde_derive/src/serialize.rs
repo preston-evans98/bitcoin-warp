@@ -24,6 +24,6 @@ pub fn impl_ser_macro(ast: &syn::DeriveInput) -> TokenStream {
 }
 
 fn serialize_field(field: &syn::Field) -> quote::__private::TokenStream {
-    let ty = field.ty.clone();
-    quote! { <#ty as shared::Serializable>::serialize(target); }
+    let ident = field.ident.clone().expect("Can only serialize named fields");
+    quote! { self.#ident.serialize(target); }
 }

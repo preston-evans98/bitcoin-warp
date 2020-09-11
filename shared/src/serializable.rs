@@ -13,6 +13,13 @@ impl Serializable for u8 {
         target.push(*self);
     }
 }
+// impl Serializable for u8 {
+//     fn serialize<W>(&self, target: &mut W) 
+//         where W:
+//         std::io::Write{
+//         target.push(*self);
+//     }
+// }
 impl Serializable for u16 {
     fn serialize(&self, target: &mut Vec<u8>) {
         target.write_u16::<LittleEndian>(*self).unwrap();
@@ -57,6 +64,12 @@ impl Serializable for &std::net::SocketAddr {
 }
 
 impl Serializable for &[u8] {
+    fn serialize(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(self)
+    }
+}
+
+impl Serializable for [u8; 4] {
     fn serialize(&self, target: &mut Vec<u8>) {
         target.extend_from_slice(self)
     }
