@@ -141,6 +141,7 @@ impl<'a> Peer<'a> {
         1
     }
     pub fn get_block_hashes(&self) -> Vec<u256>{
+        Vec::new()
         //One or more block header hashes (32 bytes each) in internal byte order. 
         //Hashes should be provided in reverse order of block height, 
         //so highest-height hashes are listed first and lowest-height hashes are listed last.
@@ -149,6 +150,6 @@ impl<'a> Peer<'a> {
     }
     pub fn get_inventory_data(&self) -> Vec<InventoryData>{
         //needs to get the actual data that we want to request from peer and put it in an InventoryData object 
-        
+        Vec::new()
     }
 }
