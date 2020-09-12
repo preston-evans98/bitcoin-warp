@@ -19,8 +19,11 @@ impl Command {
 }
 
 impl Serializable for Command {
-    fn serialize(&self, target: &mut Vec<u8>) {
-        target.extend_from_slice(self.bytes())
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_all(self.bytes())
     }
 }
 

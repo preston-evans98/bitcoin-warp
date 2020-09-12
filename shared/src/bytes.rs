@@ -19,6 +19,7 @@ impl Bytes {
         T: Serializable,
     {
         item.serialize(&mut self.0)
+            .expect("Serializing into a vec should not fail!");
     }
 
     pub fn len(&self) -> usize {
@@ -43,7 +44,10 @@ impl Bytes {
 }
 
 impl Serializable for &Bytes {
-    fn serialize(&self, target: &mut Vec<u8>) {
-        target.extend_from_slice(&self.0)
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_all(&self.0)
     }
 }

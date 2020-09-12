@@ -2,27 +2,34 @@ use byteorder::{BigEndian, LittleEndian, WriteBytesExt};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 pub trait Serializable {
-    fn serialize(&self, target: &mut Vec<u8>);
+    // fn serialize(&self, target: &mut Vec<u8>);
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write;
 }
 // pub trait BigEndianSerializable {
 //     fn serialize(&self, target: &mut Vec<u8>);
 // }
 
-impl Serializable for u8 {
-    fn serialize(&self, target: &mut Vec<u8>) {
-        target.push(*self);
-    }
-}
 // impl Serializable for u8 {
-//     fn serialize<W>(&self, target: &mut W) 
-//         where W:
-//         std::io::Write{
+//     fn serialize(&self, target: &mut Vec<u8>) {
 //         target.push(*self);
 //     }
 // }
+impl Serializable for u8 {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_all(&[*self])
+    }
+}
 impl Serializable for u16 {
-    fn serialize(&self, target: &mut Vec<u8>) {
-        target.write_u16::<LittleEndian>(*self).unwrap();
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_u16::<LittleEndian>(*self)
     }
 }
 // impl BigEndianSerializable for u16 {
@@ -31,24 +38,36 @@ impl Serializable for u16 {
 //     }
 // }
 impl Serializable for u32 {
-    fn serialize(&self, target: &mut Vec<u8>) {
-        target.write_u32::<LittleEndian>(*self).unwrap();
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_u32::<LittleEndian>(*self)
     }
 }
 impl Serializable for u64 {
-    fn serialize(&self, target: &mut Vec<u8>) {
-        target.write_u64::<LittleEndian>(*self).unwrap();
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_u64::<LittleEndian>(*self)
     }
 }
 
 impl Serializable for std::net::Ipv6Addr {
-    fn serialize(&self, target: &mut Vec<u8>) {
-        target.extend_from_slice(&self.octets());
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_all(&self.octets())
     }
 }
 
 impl Serializable for std::net::IpAddr {
-    fn serialize(&self, target: &mut Vec<u8>) {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
         match self {
             IpAddr::V4(addr) => addr.to_ipv6_mapped().serialize(target),
             IpAddr::V6(addr) => addr.serialize(target),
@@ -57,20 +76,29 @@ impl Serializable for std::net::IpAddr {
 }
 
 impl Serializable for &std::net::SocketAddr {
-    fn serialize(&self, target: &mut Vec<u8>) {
-        self.ip().serialize(target);
-        target.write_u16::<BigEndian>(self.port()).unwrap();
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        self.ip().serialize(target)?;
+        target.write_u16::<BigEndian>(self.port())
     }
 }
 
 impl Serializable for &[u8] {
-    fn serialize(&self, target: &mut Vec<u8>) {
-        target.extend_from_slice(self)
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_all(self)
     }
 }
 
 impl Serializable for [u8; 4] {
-    fn serialize(&self, target: &mut Vec<u8>) {
-        target.extend_from_slice(self)
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_all(self)
     }
 }

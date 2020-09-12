@@ -1,6 +1,6 @@
-use shared::{CompactInt,Serializable, u256};
 use config::Config;
-pub struct GetData{
+use shared::{u256, CompactInt, Serializable};
+pub struct GetData {
     hash_count: CompactInt,
     inventory: Vec<InventoryData>,
 }
@@ -15,7 +15,10 @@ pub enum InventoryType {
     FilteredWitnessBlock = 7,
 }
 impl Serializable for InventoryType {
-    fn serialize(&self, target: &mut Vec<u8>) {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
         (*self as u32).serialize(target)
     }
 }
@@ -23,18 +26,18 @@ pub struct InventoryData {
     pub inventory_type: InventoryType,
     pub hash: u256,
 }
-impl InventoryData{
-    pub fn from(inv: InventoryType, hash: u256) -> InventoryData{
+impl InventoryData {
+    pub fn from(inv: InventoryType, hash: u256) -> InventoryData {
         InventoryData {
             inventory_type: inv,
-            hash: hash
+            hash: hash,
         }
     }
 }
 
-impl GetData{
+impl GetData {
     pub fn new(temp_inventory: Vec<InventoryData>, config: &Config) -> GetData {
-        let mut message = GetData{
+        let mut message = GetData {
             hash_count: CompactInt::from(temp_inventory.len()),
             inventory: temp_inventory,
         };

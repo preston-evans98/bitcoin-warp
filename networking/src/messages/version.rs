@@ -1,8 +1,7 @@
-use shared::{Bytes, CompactInt, Deserializable, DeserializationError};
 use config::Config;
+use shared::{Bytes, CompactInt, Deserializable, DeserializationError};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
-
 
 type Services = u64;
 // #[derive(Deserializable)]
@@ -20,14 +19,15 @@ pub struct Version {
     best_block: u32,
     relay: bool,
 }
-impl Version{
-    pub fn new(peer_ip: SocketAddr,
+impl Version {
+    pub fn new(
+        peer_ip: SocketAddr,
         peer_services: u64,
         daemon_ip: SocketAddr,
         best_block: u32,
-        config: &Config
-    )  -> Version{
-        Version{
+        config: &Config,
+    ) -> Version {
+        Version {
             protocol_version: config.get_protocol_version(),
             services: config.get_services(),
             timestamp: secs_since_the_epoch(),
@@ -39,13 +39,11 @@ impl Version{
             user_agent_size: CompactInt::from(0),
             user_agent: Bytes::new(),
             best_block: best_block,
-            relay: true
+            relay: true,
         }
-
     }
-
 }
-//Body of message.rs for reference 
+//Body of message.rs for reference
 //Can be deleted after from method is made
 // let mut msg = Message::new();
 //                 // Should be 85 bytes (no user agent)

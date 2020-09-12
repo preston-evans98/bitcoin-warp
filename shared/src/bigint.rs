@@ -48,17 +48,25 @@ impl u256 {
 }
 
 impl Serializable for u256 {
-    fn serialize(&self, target: &mut Vec<u8>) {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
         for value in self.0.iter() {
-            target.write_u64::<LittleEndian>(*value).unwrap();
+            target.write_u64::<LittleEndian>(*value)?;
         }
+        Ok(())
     }
 }
 
 impl Serializable for &u256 {
-    fn serialize(&self, target: &mut Vec<u8>) {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
         for value in self.0.iter() {
-            target.write_u64::<LittleEndian>(*value).unwrap();
+            target.write_u64::<LittleEndian>(*value)?;
         }
+        Ok(())
     }
 }
