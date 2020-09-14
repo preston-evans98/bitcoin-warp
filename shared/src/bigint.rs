@@ -1,7 +1,9 @@
+use crate::deserializable::{Deserializable, DeserializationError};
 use crate::serializable::Serializable;
-use byteorder::{LittleEndian, WriteBytesExt};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 #[allow(non_camel_case_types)]
+#[derive(Debug)]
 pub struct u256([u64; 4]);
 
 fn substring(target: &str, start: usize, end: usize) -> &str {
@@ -69,4 +71,35 @@ impl Serializable for &u256 {
         }
         Ok(())
     }
+}
+
+impl Deserializable for u256 {
+    fn deserialize<R>(target: &mut R) -> Result<u256, DeserializationError>
+    where
+        R: std::io::Read,
+    {
+        Ok(u256([
+            target.read_u64::<LittleEndian>()?,
+            target.read_u64::<LittleEndian>()?,
+            target.read_u64::<LittleEndian>()?,
+            target.read_u64::<LittleEndian>()?,
+        ]))
+    }
+}
+
+impl PartialEq for u256 {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[test]
+fn test_u256_ser_deser() {
+    let expected = u256([1, 2, 3, 4]);
+    let mut serial: Vec<u8> = Vec::with_capacity(32);
+    // let mut ser_cursor = std::io::Cursor::new(&serial);
+    expected.serialize(&mut serial).unwrap();
+    let mut de_cursor = std::io::Cursor::new(serial);
+    let actual = u256::deserialize(&mut de_cursor).unwrap();
+    assert_eq!(expected, actual);
 }
