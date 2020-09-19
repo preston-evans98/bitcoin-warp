@@ -1,5 +1,5 @@
-use crate::Serializable;
-use byteorder::{LittleEndian, WriteBytesExt};
+use crate::{Deserializable, DeserializationError, Serializable};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 pub struct CompactInt(u64);
 
@@ -33,6 +33,24 @@ impl Serializable for CompactInt {
         } else {
             target.write_all(&[255]);
             target.write_u64::<LittleEndian>(self.value())
+        }
+    }
+}
+
+impl Deserializable for CompactInt {
+    fn deserialize<R>(target: &mut R) -> Result<CompactInt, DeserializationError>
+    where
+        R: std::io::Read,
+    {
+        let first = target.read_u8()?;
+        if first < 253 {
+            Ok(CompactInt::from(first as usize))
+        } else if first == 253 {
+            Ok(CompactInt::from(target.read_u16::<LittleEndian>()? as usize))
+        } else if first == 254 {
+            Ok(CompactInt::from(target.read_u32::<LittleEndian>()? as usize))
+        } else {
+            Ok(CompactInt(target.read_u64::<LittleEndian>()?))
         }
     }
 }

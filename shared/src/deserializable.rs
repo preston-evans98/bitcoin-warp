@@ -1,3 +1,4 @@
+use crate::CompactInt;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::error::Error;
 use std::{fmt, io};
@@ -50,6 +51,35 @@ impl Deserializable for u32 {
         Ok(target.read_u32::<LittleEndian>()?)
     }
 }
+
+impl Deserializable for u64 {
+    fn deserialize<R>(target: &mut R) -> Result<u64>
+    where
+        R: std::io::Read,
+    {
+        Ok(target.read_u64::<LittleEndian>()?)
+    }
+}
+
+impl<T> Deserializable for Vec<T>
+where
+    T: Deserializable,
+{
+    fn deserialize<R>(target: &mut R) -> Result<Vec<T>>
+    where
+        R: std::io::Read,
+        T: Deserializable,
+    {
+        let len = CompactInt::deserialize(target)?.value() as usize;
+        let mut result: Vec<T> = Vec::with_capacity(len);
+        for _ in 0..len {
+            result.push(T::deserialize(target)?);
+        }
+        Ok(result)
+    }
+}
+
+// impl Deserializable for SocketAddr
 
 // TODO: Replace when const generics stabilize
 macro_rules! impl_deserializable_byte_array {

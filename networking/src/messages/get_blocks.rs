@@ -25,7 +25,7 @@ impl GetBlocks{
             //if you need more than 500, you will need to send another “getblocks” message with a higher-height 
             //header hash as the first entry in block header hash field).
             match message.block_header_hashes.last() {
-                Some(hash) => message.stop_hash = *hash.clone(),
+                Some(hash) => {} // message.stop_hash = *hash.clone(),
                 None => {
                     warn!("GetBlocks: stop hash was empty");
                 }

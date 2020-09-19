@@ -1,3 +1,4 @@
+use crate::CompactInt;
 use byteorder::{BigEndian, LittleEndian, WriteBytesExt};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
@@ -100,5 +101,21 @@ impl Serializable for [u8; 4] {
         W: std::io::Write,
     {
         target.write_all(self)
+    }
+}
+
+impl<T> Serializable for Vec<T>
+where
+    T: Serializable,
+{
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        CompactInt::from(self.len()).serialize(target)?;
+        for item in self.iter() {
+            item.serialize(target)?
+        }
+        Ok(())
     }
 }

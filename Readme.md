@@ -17,9 +17,9 @@ Core has earned its place at the top. It's battle-tested, actively maintained, a
 1. **Alt-Clients have restrictive licenses**. GoCoin, Parity - I'm looking at you. 
 
 ## What Will Make Bitcoin Warp Different?
-1. **Performance**. Unlike clients written in Go (or C#, or JS, or Python, or...) there's no reason Bitcoin Warp needs to be slower than Bitcoin Core. Hopefully, it will be even faster.
-1. **Security** Bitcoin Warp will be (almost) completely immune to memory safety bugs. It will have a secure supply chain. 
-1. **Simplicity** We expect Bitcoin Warp to be significantly smaller (in terms of SLOC) than Bitcoin Warp. 
+1. **Performance.**. Unlike clients written in Go (or C#, or JS, or Python, or...) there's no reason Bitcoin Warp needs to be slower than Bitcoin Core. Hopefully, it will be even faster.
+1. **Security.** Bitcoin Warp will be (almost) completely immune to memory safety bugs. It will have a secure supply chain. 
+1. **Simplicity.** We expect Bitcoin Warp to be significantly smaller (in terms of SLOC) than Bitcoin Core. 
 1. **Free as in Freedom.** And Free as in Beer. Bitcoin Warp is open source and MIT licensed.
 
 How is all of that possible? Mostly, it comes down to writing in Rust.  In case you're not familiar, Rust is a systems programming language that combines blazing speed with complete memory safety (assuming you don't need `unsafe` features). It's doesn't have garbage collection, so it produces binaries that run just as fast as `C` programs, and don't take up any more space.  It has a package manager that provides reasonable protections against supply chain attacks (lock files with hashes are a big plus). It also has a bunch of neat features like iterators, closures, generics, and macros. 

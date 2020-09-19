@@ -1,11 +1,12 @@
 use config::Config;
+use serde_derive::{Deserializable, Serializable};
 use shared::{Bytes, CompactInt, Deserializable, DeserializationError};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
-use serde_derive::{Deserializable, Serializable};
 
 type Services = u64;
-#[derive(Deserializable, Serializable)]
+// #[derive(Deserializable)]
+// #[derive(Deserializable, Serializable)]
 pub struct Version {
     protocol_version: u32,
     services: Services,
@@ -15,8 +16,7 @@ pub struct Version {
     transmitter_services: Services,
     transmitter_ip: SocketAddr,
     nonce: u64,
-    user_agent_size: CompactInt,
-    user_agent: Bytes,
+    user_agent: Vec<u8>,
     best_block: u32,
     relay: bool,
 }
@@ -37,8 +37,7 @@ impl Version {
             transmitter_services: config.get_services(),
             transmitter_ip: daemon_ip,
             nonce: 0 as u64,
-            user_agent_size: CompactInt::from(0),
-            user_agent: Bytes::new(),
+            user_agent: Vec::new(),
             best_block: best_block,
             relay: true,
         }

@@ -1,14 +1,13 @@
 use crate::command::Command;
 use crate::header::Header;
 use crate::message::Message;
-use crate::messages::Version;
 use crate::messages::GetBlocks;
 use crate::messages::GetData;
 use crate::messages::InventoryData;
 use crate::messages::InventoryType;
+use crate::messages::Version;
 use config::Config;
 use shared::{u256, DeserializationError};
-use warp_crypto::double_sha256;
 use std::fmt;
 use std::io::Cursor;
 use std::net::SocketAddr;
@@ -16,6 +15,7 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
+use warp_crypto::double_sha256;
 
 type Result<T> = std::result::Result<T, PeerError>;
 
@@ -103,14 +103,21 @@ impl<'a> Peer<'a> {
         let mut msg = Message::new();
         match command {
             Command::Version => {
-                let message = Version::new(self.ip_address,self.services,self.daemon_address,self.get_best_block(),&Config::mainnet());
+                let message = Version::new(
+                    self.ip_address,
+                    self.services,
+                    self.daemon_address,
+                    self.get_best_block(),
+                    &Config::mainnet(),
+                );
             }
             Command::Verack => {}
             Command::GetBlocks => {
-                let message: GetBlocks = GetBlocks::new(self.get_block_hashes(),true,&Config::mainnet());
+                let message: GetBlocks =
+                    GetBlocks::new(self.get_block_hashes(), true, &Config::mainnet());
             }
             Command::GetData => {
-                let message: GetData = GetData::new(self.get_inventory_data(),&Config::mainnet());
+                let message: GetData = GetData::new(self.get_inventory_data(), &Config::mainnet());
             }
         }
         msg.create_header_for_body(command, self.config.magic());
@@ -140,16 +147,65 @@ impl<'a> Peer<'a> {
     pub fn get_best_block(&self) -> u32 {
         1
     }
-    pub fn get_block_hashes(&self) -> Vec<u256>{
+    pub fn get_block_hashes(&self) -> Vec<u256> {
         Vec::new()
-        //One or more block header hashes (32 bytes each) in internal byte order. 
-        //Hashes should be provided in reverse order of block height, 
+        //One or more block header hashes (32 bytes each) in internal byte order.
+        //Hashes should be provided in reverse order of block height,
         //so highest-height hashes are listed first and lowest-height hashes are listed last.
         //should get from the database the block headers needed and hash them here and put them in a vector
-        
     }
-    pub fn get_inventory_data(&self) -> Vec<InventoryData>{
-        //needs to get the actual data that we want to request from peer and put it in an InventoryData object 
+    pub fn get_inventory_data(&self) -> Vec<InventoryData> {
+        //needs to get the actual data that we want to request from peer and put it in an InventoryData object
         Vec::new()
+    }
+    pub async fn perform_handshake(&mut self) -> Result<()> {
+        self.send(Command::Version).await?; //sending version message
+        let version_response = self.receive(Some(Duration::from_secs(60))).await?;
+        match version_response {
+            Command::Version => {
+                self.send(Command::Verack).await?;
+            }
+            _ => {
+                return Err(PeerError::Message(format!(
+                    "Expected Version but got {:?}",
+                    version_response
+                )))
+            }
+        }
+        let verack_response = self.receive(Some(Duration::from_secs(60))).await?;
+        match verack_response {
+            Command::Verack => return Ok(()),
+            _ => {
+                return Err(PeerError::Message(format!(
+                    "Expected Verack message but got {:?}",
+                    verack_response
+                )))
+            }
+        }
+    }
+    pub async fn accept_handshake(&mut self) -> Result<()> {
+        let version_response = self.receive(Some(Duration::from_secs(60))).await?;
+        match version_response {
+            Command::Version => {
+                self.send(Command::Version).await?; //sending version message
+            }
+            _ => {
+                return Err(PeerError::Message(format!(
+                    "Expected Version message but got {:?}",
+                    version_response
+                )))
+            }
+        }
+        self.send(Command::Verack).await?;
+        let verack_response = self.receive(Some(Duration::from_secs(60))).await?;
+        match verack_response {
+            Command::Verack => return Ok(()),
+            _ => {
+                return Err(PeerError::Message(format!(
+                    "Expected Verack message but got {:?}",
+                    verack_response
+                )))
+            }
+        }
     }
 }
