@@ -63,6 +63,22 @@ impl Serializable for u64 {
         target.write_u64::<LittleEndian>(*self)
     }
 }
+impl Serializable for i64 {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_i64::<LittleEndian>(*self)
+    }
+}
+impl Serializable for i32 {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,  
+    {
+        target.write_i32::<LittleEndian>(*self)
+    }
+}
 
 impl Serializable for std::net::Ipv6Addr {
     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>

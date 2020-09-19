@@ -1,7 +1,7 @@
 use crate::command::Command;
 use crate::header::Header;
 use crate::message::Message;
-use crate::messages::{GetBlocks, GetData, InventoryData, Version, Block};
+use crate::messages::{GetBlocks, GetData, InventoryData, Version, Block, GetHeaders, Transaction};
 use config::Config;
 use shared::{u256, DeserializationError};
 use std::fmt;
@@ -115,7 +115,10 @@ impl<'a> Peer<'a> {
                 let message: GetData = GetData::new(self.get_inventory_data(), &Config::mainnet());
             }
             Command::Block => {
-                // let message: Block = Block::new();
+                let message: Block = Block::new(self.get_block_transactions(u256::from(256))); //need to actually get the block hash header for the block we need
+            }
+            Command::GetHeaders => {
+                let message: GetHeaders = GetHeaders::new(self.get_block_hashes(), false, &Config::mainnet());
             }
         }
         msg.create_header_for_body(command, self.config.magic());
@@ -154,6 +157,10 @@ impl<'a> Peer<'a> {
     }
     pub fn get_inventory_data(&self) -> Vec<InventoryData> {
         //needs to get the actual data that we want to request from peer and put it in an InventoryData object
+        Vec::new()
+    }
+    pub fn get_block_transactions(&self,block_header_hash: u256) -> Vec<Transaction>{
+        //needs to retrieve the transactions for the block that is passed in to block_header_hash
         Vec::new()
     }
     pub async fn perform_handshake(&mut self) -> Result<()> {

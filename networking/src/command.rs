@@ -7,6 +7,7 @@ pub enum Command {
     GetBlocks,
     GetData,
     Block,
+    GetHeaders,
 }
 impl Command {
     pub fn bytes(&self) -> &[u8; 12] {
@@ -16,6 +17,7 @@ impl Command {
             Command::GetBlocks => b"getblocks\0\0\0",
             Command::GetData => b"getdata\0\0\0\0\0",
             Command::Block => b"block\0\0\0\0\0\0\0",
+            Command::GetHeaders => b"getheaders\0\0",
         }
     }
 }

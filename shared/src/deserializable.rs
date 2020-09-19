@@ -103,6 +103,14 @@ impl Deserializable for i64 {
         Ok(target.read_i64::<LittleEndian>()?)
     }
 }
+impl Deserializable for i32 {
+    fn deserialize<R>(target: &mut R) -> Result<i32>
+    where
+        R: std::io::Read,
+    {
+        Ok(target.read_i32::<LittleEndian>()?)
+    }
+}
 
 impl<T> Deserializable for Vec<T>
 where
