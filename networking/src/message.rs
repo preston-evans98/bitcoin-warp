@@ -1,8 +1,5 @@
 use crate::command::Command;
-use crate::messages::Version;
-use config::Config;
-use log::warn;
-use shared::{u256, Bytes, CompactInt};
+use shared::Bytes;
 
 pub struct Message {
     header: Bytes,
@@ -36,7 +33,4 @@ impl Message {
     pub fn dump_body(&self) -> String {
         self.body.hex()
     }
-
 }
-
-

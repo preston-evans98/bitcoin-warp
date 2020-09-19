@@ -1,7 +1,7 @@
 use crate::command::Command;
 use crate::header::Header;
 use crate::message::Message;
-use crate::messages::{Block, GetBlocks, GetData, InventoryData, InventoryType, Version};
+use crate::messages::{GetBlocks, GetData, InventoryData, Version};
 use config::Config;
 use shared::{u256, DeserializationError};
 use std::fmt;
@@ -11,7 +11,6 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
-use warp_crypto::double_sha256;
 
 type Result<T> = std::result::Result<T, PeerError>;
 

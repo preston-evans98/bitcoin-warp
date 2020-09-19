@@ -1,5 +1,4 @@
 use crate::command::Command;
-use crate::message::Message;
 use crate::peer::Peer;
 use crate::peer::PeerError;
 // use tokio_io::{AsyncRead, AsyncWrite};

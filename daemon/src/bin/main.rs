@@ -2,10 +2,9 @@ extern crate hex;
 extern crate serde_derive;
 use config::Config;
 use daemon::Daemon;
-use networking::{Command, Message, Peer};
+use networking::{Command, Peer};
 use serde_derive::{Deserializable, Serializable};
-use std::io::{Read, Write};
-use std::net::{Shutdown, SocketAddr, TcpStream};
+use std::net::SocketAddr;
 
 #[derive(Serializable, Deserializable, Debug)]
 pub struct MyTestStruct {
@@ -30,7 +29,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::mainnet();
     let addr = SocketAddr::from(([192, 168, 1, 9], 8333));
     let mut raspi = Peer::at_address(1, addr, &config).await.unwrap();
-
 
     // let mut peer2 = Peer::at_address(1, addr2, &config).await.unwrap();
     let result = raspi.perform_handshake().await;
