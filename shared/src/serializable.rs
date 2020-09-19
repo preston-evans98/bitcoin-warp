@@ -1,6 +1,6 @@
 use crate::CompactInt;
 use byteorder::{BigEndian, LittleEndian, WriteBytesExt};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::IpAddr;
 
 pub trait Serializable {
     // fn serialize(&self, target: &mut Vec<u8>);
@@ -17,6 +17,15 @@ pub trait Serializable {
 //         target.push(*self);
 //     }
 // }
+impl Serializable for bool {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_all(&[*self as u8])
+    }
+}
+
 impl Serializable for u8 {
     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
     where
@@ -77,6 +86,16 @@ impl Serializable for std::net::IpAddr {
 }
 
 impl Serializable for &std::net::SocketAddr {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        self.ip().serialize(target)?;
+        target.write_u16::<BigEndian>(self.port())
+    }
+}
+
+impl Serializable for std::net::SocketAddr {
     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
     where
         W: std::io::Write,
