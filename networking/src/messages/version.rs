@@ -2,10 +2,11 @@ use shared::{Bytes, CompactInt, Deserializable, DeserializationError};
 use config::Config;
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
+use serde_derive::{Deserializable, Serializable};
 
 
 type Services = u64;
-// #[derive(Deserializable)]
+#[derive(Deserializable, Serializable)]
 pub struct Version {
     protocol_version: u32,
     services: Services,

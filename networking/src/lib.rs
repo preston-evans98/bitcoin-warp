@@ -30,7 +30,10 @@ mod tests {
     use crate::Command;
     use crate::Message;
     use config::Config;
-    #[test]
+    use crate::Peer;
+    use std::net::{SocketAddr,IpAddr,Ipv4Addr};
+    use crate::peer_connect;
+    #[test] 
     fn test_verack() {
         let mut message = Message::new();
         message.create_header_for_body(Command::Verack, Config::mainnet().magic());
@@ -38,6 +41,23 @@ mod tests {
             message.get_header().hex(),
             "f9beb4d976657261636b000000000000000000005df6e0e2"
         )
+    }
+    use crate::Version;
+    
+    #[test]
+    fn test_version_serialize(){
+        let foreign_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8333);
+        let local_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8333);
+        let version = Version::new(foreign_address,01 as u64,local_address,0 as u32,&Config::mainnet());
+        
+        assert_eq!(
+            versoin.hex(),
+            version.serialize();
+        )
+        // Peer::at_address(1, address, &Config::mainnet());
+
+        //peer_connect::outbound_connection();
+        //println!("The connection returned: {:#?}",result);
     }
     // #[test]
     // fn test_getblocks() {
