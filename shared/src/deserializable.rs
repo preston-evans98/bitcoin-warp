@@ -1,6 +1,7 @@
 use crate::CompactInt;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::error::Error;
+use std::net::SocketAddr;
 use std::{fmt, io};
 
 #[derive(Debug)]
@@ -43,6 +44,40 @@ pub trait Deserializable {
         R: std::io::Read;
 }
 
+impl Deserializable for bool {
+    fn deserialize<R>(target: &mut R) -> Result<bool>
+    where
+        R: std::io::Read,
+    {
+        let value = target.read_u8()?;
+        match value {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => Err(DeserializationError::Parse(format!(
+                "Could not parse {:?} as bool",
+                value
+            ))),
+        }
+    }
+}
+impl Deserializable for u8 {
+    fn deserialize<R>(target: &mut R) -> Result<u8>
+    where
+        R: std::io::Read,
+    {
+        Ok(target.read_u8()?)
+    }
+}
+
+impl Deserializable for u16 {
+    fn deserialize<R>(target: &mut R) -> Result<u16>
+    where
+        R: std::io::Read,
+    {
+        Ok(target.read_u16::<LittleEndian>()?)
+    }
+}
+
 impl Deserializable for u32 {
     fn deserialize<R>(target: &mut R) -> Result<u32>
     where
@@ -79,7 +114,17 @@ where
     }
 }
 
-// impl Deserializable for SocketAddr
+impl Deserializable for SocketAddr {
+    fn deserialize<R>(target: &mut R) -> Result<SocketAddr>
+    where
+        R: std::io::Read,
+    {
+        Ok(SocketAddr::from((
+            <[u8; 4]>::deserialize(target)?,
+            <u16>::deserialize(target)?,
+        )))
+    }
+}
 
 // TODO: Replace when const generics stabilize
 macro_rules! impl_deserializable_byte_array {

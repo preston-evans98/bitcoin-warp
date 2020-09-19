@@ -1,6 +1,6 @@
 use crate::CompactInt;
 use byteorder::{BigEndian, LittleEndian, WriteBytesExt};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::IpAddr;
 
 pub trait Serializable {
     // fn serialize(&self, target: &mut Vec<u8>);
