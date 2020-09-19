@@ -1,11 +1,7 @@
 use crate::command::Command;
 use crate::header::Header;
 use crate::message::Message;
-use crate::messages::Version;
-use crate::messages::GetBlocks;
-use crate::messages::GetData;
-use crate::messages::InventoryData;
-use crate::messages::InventoryType;
+use crate::messages::{Version,GetBlocks,GetData,InventoryData,InventoryType,Block};
 use config::Config;
 use shared::{u256, DeserializationError};
 use warp_crypto::double_sha256;
@@ -111,6 +107,9 @@ impl<'a> Peer<'a> {
             }
             Command::GetData => {
                 let message: GetData = GetData::new(self.get_inventory_data(),&Config::mainnet());
+            }
+            Command::Block => {
+                // let message: Block = Block::new();
             }
         }
         msg.create_header_for_body(command, self.config.magic());

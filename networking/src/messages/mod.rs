@@ -8,3 +8,6 @@ mod get_data;
 pub use get_data::GetData;
 pub use get_data::InventoryData;
 pub use get_data::InventoryType;
+
+mod block;
+pub use block::Block;
