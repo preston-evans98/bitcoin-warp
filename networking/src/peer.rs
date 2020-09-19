@@ -1,7 +1,7 @@
 use crate::command::Command;
 use crate::header::Header;
 use crate::message::Message;
-use crate::messages::{GetBlocks, GetData, InventoryData, Version};
+use crate::messages::{GetBlocks, GetData, InventoryData, Version, Block};
 use config::Config;
 use shared::{u256, DeserializationError};
 use std::fmt;
