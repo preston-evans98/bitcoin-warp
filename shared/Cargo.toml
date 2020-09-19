@@ -11,3 +11,4 @@ byteorder = "1"
 warp-crypto = { path = "../crypto" }
 serde_derive = { path = "../serde_derive" }
 hex = "0.4.2"
+paste = "1.0"

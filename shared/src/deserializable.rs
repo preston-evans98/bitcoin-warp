@@ -1,5 +1,6 @@
 use crate::CompactInt;
 use byteorder::{LittleEndian, ReadBytesExt};
+use paste::paste;
 use std::error::Error;
 use std::net::SocketAddr;
 use std::{fmt, io};
@@ -69,48 +70,46 @@ impl Deserializable for u8 {
     }
 }
 
-impl Deserializable for u16 {
-    fn deserialize<R>(target: &mut R) -> Result<u16>
-    where
-        R: std::io::Read,
-    {
-        Ok(target.read_u16::<LittleEndian>()?)
-    }
+macro_rules! impl_deser_primitive {
+    ($($t:ty),+) => {
+        $(impl Deserializable for $t {
+            fn deserialize<R>(target: &mut R) -> Result<$t>
+            where
+                R: std::io::Read,
+            {
+                paste! {Ok(target.[<read_ $t>]::<LittleEndian>()?)}
+            }
+        })+
+    };
 }
 
-impl Deserializable for u32 {
-    fn deserialize<R>(target: &mut R) -> Result<u32>
-    where
-        R: std::io::Read,
-    {
-        Ok(target.read_u32::<LittleEndian>()?)
-    }
-}
+impl_deser_primitive!(u16, u32, u64, i32, i64);
 
-impl Deserializable for u64 {
-    fn deserialize<R>(target: &mut R) -> Result<u64>
-    where
-        R: std::io::Read,
-    {
-        Ok(target.read_u64::<LittleEndian>()?)
-    }
-}
-impl Deserializable for i64 {
-    fn deserialize<R>(target: &mut R) -> Result<i64>
-    where
-        R: std::io::Read,
-    {
-        Ok(target.read_i64::<LittleEndian>()?)
-    }
-}
-impl Deserializable for i32 {
-    fn deserialize<R>(target: &mut R) -> Result<i32>
-    where
-        R: std::io::Read,
-    {
-        Ok(target.read_i32::<LittleEndian>()?)
-    }
-}
+// impl Deserializable for u32 {
+//     fn deserialize<R>(target: &mut R) -> Result<u32>
+//     where
+//         R: std::io::Read,
+//     {
+//         Ok(target.read_u32::<LittleEndian>()?)
+//     }
+// }
+
+// impl Deserializable for u64 {
+//     fn deserialize<R>(target: &mut R) -> Result<u64>
+//     where
+//         R: std::io::Read,
+//     {
+//         Ok(target.read_u64::<LittleEndian>()?)
+//     }
+// }
+// impl Deserializable for i64 {
+//     fn deserialize<R>(target: &mut R) -> Result<i64>
+//     where
+//         R: std::io::Read,
+//     {
+//         Ok(target.read_i64::<LittleEndian>()?)
+//     }
+// }
 
 impl<T> Deserializable for Vec<T>
 where

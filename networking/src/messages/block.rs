@@ -1,5 +1,5 @@
-use shared::{Deserializable, DeserializationError, Serializable, u256};
 use serde_derive::{Deserializable, Serializable};
+use shared::{u256, Deserializable, DeserializationError, Serializable};
 
 #[derive(Deserializable, Serializable)]
 pub struct Transaction{
@@ -11,7 +11,7 @@ pub struct Transaction{
 pub struct TxInput{
     previous_outpoint: TxOutpoint,
     signature_script: Vec<u8>,
-    sequence: u32,    // Sequence number. Default for Bitcoin Core and almost all other programs is 0xffffffff.
+    sequence: u32, // Sequence number. Default for Bitcoin Core and almost all other programs is 0xffffffff.
 }
 #[derive(Deserializable, Serializable)]
 pub struct TxOutput{
@@ -28,16 +28,13 @@ pub struct CoinbaseInput{
     
 }
 #[derive(Deserializable, Serializable)]
-pub struct Block{
+pub struct Block {
     transactions: Vec<Transaction>,
 }
 
-impl Block{
-    pub fn new(txs: Vec<Transaction>) -> Block{
-        let message = Block {
-            transactions: txs,
-        };
+impl Block {
+    pub fn new(txs: Vec<Transaction>) -> Block {
+        let message = Block { transactions: txs };
         message
     }
-
 }
