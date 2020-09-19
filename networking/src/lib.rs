@@ -10,32 +10,26 @@ pub use peer::Peer;
 mod peer_connect;
 pub use peer_connect::outbound_connection;
 
-
 mod header;
 
 mod messages;
-pub use messages::Version;
+pub use messages::Block;
 pub use messages::GetBlocks;
 pub use messages::GetData;
+pub use messages::GetHeaders;
 pub use messages::InventoryData;
 pub use messages::InventoryType;
-pub use messages::Block;
-pub use messages::GetHeaders;
-
-
-
-
-
+pub use messages::Version;
 
 #[cfg(test)]
 mod tests {
+    use crate::peer_connect;
     use crate::Command;
     use crate::Message;
-    use config::Config;
     use crate::Peer;
-    use std::net::{SocketAddr,IpAddr,Ipv4Addr};
-    use crate::peer_connect;
-    #[test] 
+    use config::Config;
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    #[test]
     fn test_verack() {
         let mut message = Message::new();
         message.create_header_for_body(Command::Verack, Config::mainnet().magic());
@@ -45,13 +39,19 @@ mod tests {
         )
     }
     use crate::Version;
-    
+
     #[test]
-    fn test_version_serialize(){
+    fn test_version_serialize() {
         let foreign_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8333);
         let local_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8333);
-        let version = Version::new(foreign_address,01 as u64,local_address,0 as u32,&Config::mainnet());
-        
+        let version = Version::new(
+            foreign_address,
+            01 as u64,
+            local_address,
+            0 as u32,
+            &Config::mainnet(),
+        );
+
         assert_eq!(
             versoin.hex(),
             version.serialize();
