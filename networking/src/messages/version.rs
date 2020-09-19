@@ -6,7 +6,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 type Services = u64;
 #[derive(Deserializable, Serializable)]
-// #[derive(Deserializable, Serializable)]
 pub struct Version {
     protocol_version: u32,
     services: Services,
