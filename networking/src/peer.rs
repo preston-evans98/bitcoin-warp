@@ -95,7 +95,7 @@ impl<'a> Peer<'a> {
         }
     }
     pub async fn send(&mut self, command: Command) -> Result<()> {
-        let mut msg = Message::new();
+        let mut message = Message::new();
         match command {
             Command::Version => {
                 let message = Version::new(
@@ -121,9 +121,9 @@ impl<'a> Peer<'a> {
                 let message: GetHeaders = GetHeaders::new(self.get_block_hashes(), false, &Config::mainnet());
             }
         }
-        msg.create_header_for_body(command, self.config.magic());
-        self.connection.write(msg.get_header().get_bytes()).await?;
-        self.connection.write(msg.get_body().get_bytes()).await?;
+        message.create_header_for_body(command, self.config.magic());
+        self.connection.write(message.get_header().get_bytes()).await?;
+        self.connection.write(message.get_body().get_bytes()).await?;
         Ok(())
     }
 
