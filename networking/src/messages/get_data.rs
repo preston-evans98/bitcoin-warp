@@ -1,7 +1,6 @@
 use config::Config;
-use shared::{u256, CompactInt, Serializable};
+use shared::{u256, Serializable};
 pub struct GetData {
-    hash_count: CompactInt,
     inventory: Vec<InventoryData>,
 }
 #[derive(Copy, Clone)]
@@ -38,7 +37,6 @@ impl InventoryData {
 impl GetData {
     pub fn new(temp_inventory: Vec<InventoryData>, config: &Config) -> GetData {
         let mut message = GetData {
-            hash_count: CompactInt::from(temp_inventory.len()),
             inventory: temp_inventory,
         };
         // for x in inventory.iter() {
