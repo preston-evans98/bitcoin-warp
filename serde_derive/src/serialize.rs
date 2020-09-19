@@ -15,8 +15,12 @@ pub fn impl_ser_macro(ast: &syn::DeriveInput) -> TokenStream {
 
     let expanded = quote! {
         impl shared::Serializable for #name {
-            fn serialize(&self, target: &mut Vec<u8>) {
+            fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+            where
+                W: std::io::Write,
+            {
                 #(#statements)*
+                Ok(())
             }
         }
     };
@@ -24,6 +28,9 @@ pub fn impl_ser_macro(ast: &syn::DeriveInput) -> TokenStream {
 }
 
 fn serialize_field(field: &syn::Field) -> quote::__private::TokenStream {
-    let ty = field.ty.clone();
-    quote! { <#ty as shared::Serializable>::serialize(target); }
+    let ident = field
+        .ident
+        .clone()
+        .expect("Can only serialize named fields");
+    quote! { self.#ident.serialize(target)?; }
 }

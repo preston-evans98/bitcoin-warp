@@ -7,11 +7,11 @@ use serde_derive::{Deserializable, Serializable};
 use std::io::{Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpStream};
 
-// #[derive(Serializable, Deserializable, Debug)]
-// pub struct MyTestStruct {
-//     identifier: u32,
-//     contents: [u8; 4],
-// }
+#[derive(Serializable, Deserializable, Debug)]
+pub struct MyTestStruct {
+    identifier: u32,
+    contents: [u8; 4],
+}
 
 // fn test() {
 //     // use shared::Deserializable;
