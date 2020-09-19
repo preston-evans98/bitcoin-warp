@@ -19,6 +19,7 @@ pub use messages::GetBlocks;
 pub use messages::GetData;
 pub use messages::InventoryData;
 pub use messages::InventoryType;
+pub use messages::Block;
 
 
 
