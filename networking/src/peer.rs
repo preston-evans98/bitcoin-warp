@@ -1,7 +1,7 @@
 use crate::command::Command;
 use crate::header::Header;
 use crate::message::Message;
-use crate::messages::{GetBlocks, GetData, InventoryData, Version, Block, GetHeaders, Transaction};
+use crate::messages::{Block, GetBlocks, GetData, GetHeaders, InventoryData, Transaction, Version};
 use config::Config;
 use shared::{u256, DeserializationError};
 use std::fmt;
@@ -115,26 +115,45 @@ impl<'a> Peer<'a> {
                 let message: GetData = GetData::new(self.get_inventory_data(), &Config::mainnet());
             }
             Command::Block => {
-                let message: Block = Block::new(self.get_block_transactions(u256::from(256))); //need to actually get the block hash header for the block we need
+                let message: Block = Block::new(self.get_block_transactions(u256::from(256)));
+                //need to actually get the block hash header for the block we need
             }
             Command::GetHeaders => {
-                let message: GetHeaders = GetHeaders::new(self.get_block_hashes(), false, &Config::mainnet());
+                let message: GetHeaders =
+                    GetHeaders::new(self.get_block_hashes(), false, &Config::mainnet());
             }
         }
         message.create_header_for_body(command, self.config.magic());
-        self.connection.write(message.get_header().get_bytes()).await?;
-        self.connection.write(message.get_body().get_bytes()).await?;
+        self.connection
+            .write(message.get_header().get_bytes())
+            .await?;
+        self.connection
+            .write(message.get_body().get_bytes())
+            .await?;
         Ok(())
     }
 
-    pub async fn receive(&mut self, timeout_duration: Option<Duration>) -> Result<Command> {
+    pub async fn receive_header_and_discard_body(
+        &mut self,
+        timeout_duration: Option<Duration>,
+    ) -> Result<Command>
+where {
         let mut buf = [0u8; 24];
         if let Some(duration) = timeout_duration {
             timeout(duration, self.connection.read_exact(&mut buf)).await??;
         } else {
             self.connection.read_exact(&mut buf).await?;
         }
+        println!("Received raw response. Deserializing.");
         let header = Header::deserialize(&mut Cursor::new(buf), self.config.magic())?;
+        println!("Received header: {:?}", header.get_command());
+        let mut discard = Vec::with_capacity(header.get_payload_size());
+        if let Some(duration) = timeout_duration {
+            timeout(duration, self.connection.read_exact(&mut discard)).await??;
+        } else {
+            self.connection.read_exact(&mut discard).await?;
+        }
+        println!("Returning header: {:?}", header.get_command());
         Ok(header.get_command())
     }
 
@@ -159,16 +178,20 @@ impl<'a> Peer<'a> {
         //needs to get the actual data that we want to request from peer and put it in an InventoryData object
         Vec::new()
     }
-    pub fn get_block_transactions(&self,block_header_hash: u256) -> Vec<Transaction>{
+    pub fn get_block_transactions(&self, block_header_hash: u256) -> Vec<Transaction> {
         //needs to retrieve the transactions for the block that is passed in to block_header_hash
         Vec::new()
     }
     pub async fn perform_handshake(&mut self) -> Result<()> {
         self.send(Command::Version).await?; //sending version message
-        let version_response = self.receive(Some(Duration::from_secs(60))).await?;
+        println!("Sent Version");
+        let version_response = self
+            .receive_header_and_discard_body(Some(Duration::from_secs(60)))
+            .await?;
         match version_response {
             Command::Version => {
                 self.send(Command::Verack).await?;
+                println!("Sent Verack");
             }
             _ => {
                 return Err(PeerError::Message(format!(
@@ -177,7 +200,9 @@ impl<'a> Peer<'a> {
                 )))
             }
         }
-        let verack_response = self.receive(Some(Duration::from_secs(60))).await?;
+        let verack_response = self
+            .receive_header_and_discard_body(Some(Duration::from_secs(60)))
+            .await?;
         match verack_response {
             Command::Verack => return Ok(()),
             _ => {
@@ -189,7 +214,9 @@ impl<'a> Peer<'a> {
         }
     }
     pub async fn accept_handshake(&mut self) -> Result<()> {
-        let version_response = self.receive(Some(Duration::from_secs(60))).await?;
+        let version_response = self
+            .receive_header_and_discard_body(Some(Duration::from_secs(60)))
+            .await?;
         match version_response {
             Command::Version => {
                 self.send(Command::Version).await?; //sending version message
@@ -202,7 +229,9 @@ impl<'a> Peer<'a> {
             }
         }
         self.send(Command::Verack).await?;
-        let verack_response = self.receive(Some(Duration::from_secs(60))).await?;
+        let verack_response = self
+            .receive_header_and_discard_body(Some(Duration::from_secs(60)))
+            .await?;
         match verack_response {
             Command::Verack => return Ok(()),
             _ => {

@@ -30,7 +30,10 @@ impl Header {
             checksum,
         })
     }
-    pub fn get_command(self) -> Command {
+    pub fn get_command(&self) -> Command {
         self.command.clone()
+    }
+    pub fn get_payload_size(&self) -> usize {
+        self.payload_size as usize
     }
 }
