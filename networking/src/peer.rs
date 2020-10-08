@@ -1,9 +1,8 @@
 use crate::command::Command;
 use crate::header::Header;
-use crate::message::Message;
 use crate::messages::{GetBlocks, GetData, InventoryData, Version, Block, GetHeaders, Transaction};
 use config::Config;
-use shared::{u256, DeserializationError};
+use shared::{u256, DeserializationError,Serializable,Deserializable};
 use std::fmt;
 use std::io::Cursor;
 use std::net::SocketAddr;
@@ -95,7 +94,6 @@ impl<'a> Peer<'a> {
         }
     }
     pub async fn send(&mut self, command: Command) -> Result<()> {
-        let mut message = Message::new();
         match command {
             Command::Version => {
                 let message = Version::new(
@@ -105,25 +103,39 @@ impl<'a> Peer<'a> {
                     self.get_best_block(),
                     &Config::mainnet(),
                 );
+                let header = Header::from(Config::mainnet().magic(),Command::Version,message);
+                self.connection.write(header.serialize()).await?;
+                self.connection.write(message.serialize()).await?;
             }
             Command::Verack => {}
             Command::GetBlocks => {
-                let message: GetBlocks =
-                    GetBlocks::new(self.get_block_hashes(), true, &Config::mainnet());
+                let message: GetBlocks =GetBlocks::new(self.get_block_hashes(), true, &Config::mainnet());
+                let header = Header::from(Config::mainnet().magic(),Command::GetBlocks,message);
+                self.connection.write(header.serialize()).await?;
+                self.connection.write(message.serialize()).await?;
             }
             Command::GetData => {
                 let message: GetData = GetData::new(self.get_inventory_data(), &Config::mainnet());
+                let header = Header::from(Config::mainnet().magic(),Command::GetData,message);
+                self.connection.write(header.serialize()).await?;
+                self.connection.write(message.serialize()).await?;      
             }
             Command::Block => {
                 let message: Block = Block::new(self.get_block_transactions(u256::from(256))); //need to actually get the block hash header for the block we need
+                let header = Header::from(Config::mainnet().magic(),Command::Block,message);
+                self.connection.write(header.serialize()).await?;
+                self.connection.write(message.serialize()).await?;
             }
             Command::GetHeaders => {
                 let message: GetHeaders = GetHeaders::new(self.get_block_hashes(), false, &Config::mainnet());
+                let header = Header::from(Config::mainnet().magic(),Command::GetHeaders,message);
+                self.connection.write(header.serialize()).await?;
+                self.connection.write(message.serialize()).await?;
             }
         }
-        message.create_header_for_body(command, self.config.magic());
-        self.connection.write(message.get_header().get_bytes()).await?;
-        self.connection.write(message.get_body().get_bytes()).await?;
+        //message.create_header_for_body(command, self.config.magic());
+        // self.connection.write(header.serialize()).await?;
+        // self.connection.write(message.serialize()).await?;
         Ok(())
     }
 

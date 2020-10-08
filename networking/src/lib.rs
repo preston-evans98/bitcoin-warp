@@ -7,9 +7,6 @@ pub use message::Message;
 mod peer;
 pub use peer::Peer;
 
-mod peer_connect;
-pub use peer_connect::outbound_connection;
-
 mod header;
 
 mod messages;
@@ -21,9 +18,9 @@ pub use messages::InventoryData;
 pub use messages::InventoryType;
 pub use messages::Version;
 
+
 #[cfg(test)]
 mod tests {
-    use crate::peer_connect;
     use crate::Command;
     use crate::Message;
     use crate::Peer;
@@ -51,16 +48,19 @@ mod tests {
             0 as u32,
             &Config::mainnet(),
         );
+        
 
         assert_eq!(
-            versoin.hex(),
-            version.serialize();
+            version.hex(),
+            version.serialize()
         )
         // Peer::at_address(1, address, &Config::mainnet());
 
         //peer_connect::outbound_connection();
         //println!("The connection returned: {:#?}",result);
     }
+
+
     // #[test]
     // fn test_getblocks() {
     //     let mut message = Message::new();

@@ -1,6 +1,8 @@
 use crate::command::Command;
-use shared::{Deserializable, DeserializationError};
+use shared::{Bytes, Deserializable, DeserializationError};
+use serde_derive::{Deserializable, Serializable};
 
+#[derive(Deserializable, Serializable)]
 pub struct Header {
     magic: u32,
     command: Command,
@@ -32,5 +34,13 @@ impl Header {
     }
     pub fn get_command(self) -> Command {
         self.command.clone()
+    }
+    fn from(magic: u32, command: Command, body: Bytes) -> Header{
+        Header{
+            magic: magic,
+            command: command,
+            payload_size: body.len() as u32,
+            checksum: body.double_sha256(),
+        }
     }
 }
