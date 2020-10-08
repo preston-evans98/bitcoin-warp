@@ -22,7 +22,7 @@ impl u256 {
         u256([target, 0, 0, 0])
     }
 
-    pub fn from_bytes_be(target: Vec<u8>) -> Result<u256, DeserializationError> {
+    pub fn from_bytes_be(target: [u8; 32]) -> Result<u256, DeserializationError> {
         let mut cursor = std::io::Cursor::new(target);
         u256::deserialize_be(&mut cursor)
     }

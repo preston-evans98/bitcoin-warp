@@ -32,7 +32,7 @@ impl Header {
             checksum,
         })
     }
-    pub fn get_command(self) -> Command {
+    pub fn get_command(&self) -> Command {
         self.command.clone()
     }
     fn from(magic: u32, command: Command, body: Bytes) -> Header{
@@ -42,5 +42,8 @@ impl Header {
             payload_size: body.len() as u32,
             checksum: body.double_sha256(),
         }
+    }
+    pub fn get_payload_size(&self) -> usize {
+        self.payload_size as usize
     }
 }
