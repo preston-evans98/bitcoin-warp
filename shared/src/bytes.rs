@@ -25,7 +25,7 @@ impl Bytes {
     pub fn len(&self) -> usize {
         self.0.len()
     }
-    pub fn double_sha256(&self) -> Vec<u8> {
+    pub fn double_sha256(&self) -> [u8; 32] {
         double_sha256(&self.0)
     }
 

@@ -7,9 +7,6 @@ pub use message::Message;
 mod peer;
 pub use peer::Peer;
 
-mod peer_connect;
-pub use peer_connect::outbound_connection;
-
 mod header;
 
 mod messages;
@@ -23,7 +20,6 @@ pub use messages::Version;
 
 #[cfg(test)]
 mod tests {
-    use crate::peer_connect;
     use crate::Command;
     use crate::Message;
     use crate::Peer;
