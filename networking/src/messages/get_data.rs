@@ -60,6 +60,9 @@ impl InventoryData {
             hash: hash,
         }
     }
+    pub fn len(&self) -> usize{
+        4 + 32 //inventory type  and hash
+    }
 }
 
 impl GetData {
@@ -77,5 +80,14 @@ impl GetData {
         // }
         //message.create_header_for_body(Command::GetData, config.magic());
         message
+    }
+    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error>{
+        let mut size = 0;
+        for inv in self.inventory{
+            size += inv.len();
+        }
+        let mut target = Vec::with_capacity(size + CompactInt::size(self.inventory.len()));
+        self.serialize(&mut target)?;
+        Ok(target)
     }
 }
