@@ -1,6 +1,6 @@
 use shared::{Deserializable, DeserializationError, Serializable};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     Version,
     Verack,

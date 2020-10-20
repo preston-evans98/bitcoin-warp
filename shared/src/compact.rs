@@ -15,6 +15,18 @@ impl CompactInt {
     pub fn value(&self) -> u64 {
         self.0
     }
+
+    pub fn size(value: usize) -> usize {
+        if value < 253 {
+            1
+        } else if value < std::u16::MAX as usize {
+            2
+        } else if value < std::u32::MAX as usize {
+            5
+        } else {
+            9
+        }
+    }
 }
 
 impl Serializable for CompactInt {

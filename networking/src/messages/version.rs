@@ -1,7 +1,7 @@
 use crate::message::Message;
 use config::Config;
 use serde_derive::{Deserializable, Serializable};
-use shared::{Bytes, CompactInt, Deserializable, DeserializationError};
+use shared::{Bytes, CompactInt, Deserializable, DeserializationError, Serializable};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -41,6 +41,15 @@ impl Version {
             best_block: best_block,
             relay: true,
         }
+    }
+}
+
+impl crate::payload::Payload for Version {
+    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+        let size = 85 + CompactInt::size(self.user_agent.len()) + self.user_agent.len();
+        let mut target = Vec::with_capacity(size);
+        self.serialize(&mut target)?;
+        Ok(target)
     }
 }
 

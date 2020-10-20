@@ -1,7 +1,9 @@
 use crate::command::Command;
 use crate::header::Header;
 use crate::message::Message;
-use crate::messages::{Block, GetBlocks, GetData, GetHeaders, InventoryData, Transaction, Version};
+use crate::messages::{
+    Block, GetBlocks, GetData, GetHeaders, InventoryData, Transaction, Verack, Version,
+};
 use crate::payload::Payload;
 use config::Config;
 use shared::{u256, Deserializable, DeserializationError, Serializable};
@@ -95,12 +97,12 @@ impl<'a> Peer<'a> {
             config,
         }
     }
-    pub async fn send<T>(&mut self, command: Command, config: &'a Config, payload: T) -> Result<()>
+    pub async fn send<T>(&mut self, command: Command, payload: T) -> Result<()>
     where
         T: Payload,
     {
         let raw_msg = payload.to_bytes()?;
-        let raw_header = Header::from_body(config.magic(), command, &raw_msg).to_bytes();
+        let raw_header = Header::from_body(self.config.magic(), command, &raw_msg).to_bytes();
         self.connection.write_all(&raw_header).await?;
         self.connection.write_all(&raw_msg).await?;
         Ok(())
@@ -131,67 +133,69 @@ impl<'a> Peer<'a> {
         //needs to retrieve the transactions for the block that is passed in to block_header_hash
         Vec::new()
     }
-    pub async fn perform_handshake(&mut self) -> Result<()> {
-        // self.send(Command::Version).await?; //sending version message
-        // println!("Sent Version");
-        // let version_response = self
-        //     .receive_header_and_discard_body(Some(Duration::from_secs(60)))
-        //     .await?;
-        // match version_response {
-        //     Command::Version => {
-        //         self.send(Command::Verack).await?;
-        //         println!("Sent Verack");
-        //     }
-        //     _ => {
-        //         return Err(PeerError::Message(format!(
-        //             "Expected Version but got {:?}",
-        //             version_response
-        //         )))
-        //     }
-        // }
-        // let verack_response = self
-        //     .receive_header_and_discard_body(Some(Duration::from_secs(60)))
-        //     .await?;
-        // match verack_response {
-        //     Command::Verack => return Ok(()),
-        //     _ => {
-        //         return Err(PeerError::Message(format!(
-        //             "Expected Verack message but got {:?}",
-        //             verack_response
-        //         )))
-        //     }
-        // }
+    pub async fn receive(
+        &mut self,
+        timeout_duration: Option<Duration>,
+    ) -> Result<(Header, Vec<u8>)> {
+        let mut header_buf = [0u8; 24];
+        let ttl = timeout_duration.unwrap_or(Duration::from_secs(60 * 89)); // Timeout after at  89 minutes by default.
+        timeout(ttl, self.connection.read_exact(&mut header_buf)).await??;
+        let header = Header::deserialize(&mut Cursor::new(header_buf), self.config.magic())?;
+        let mut payload = Vec::with_capacity(header.get_payload_size());
+        // Require body to be present within 1 second of header's arrival
+        timeout(
+            Duration::from_secs(1),
+            self.connection.read_exact(&mut payload),
+        )
+        .await??;
+        Ok((header, payload))
+    }
+    pub async fn receive_expected(
+        &mut self,
+        expected: Command,
+        timeout_duration: Option<Duration>,
+    ) -> Result<(Header, Vec<u8>)> {
+        let (header, body) = self.receive(timeout_duration).await?;
+        if header.get_command() != expected {
+            return Err(PeerError::Message(format!(
+                "Expected {:?} but got {:?}",
+                expected,
+                header.get_command()
+            )));
+        }
+        Ok((header, body))
+    }
+
+    pub async fn perform_handshake(&mut self, best_block: Option<u32>) -> Result<()> {
+        let version_msg = Version::new(
+            self.ip_address.clone(),
+            self.services,
+            self.daemon_address,
+            best_block.unwrap_or(0),
+            &self.config,
+        );
+        self.send(Command::Version, version_msg).await?;
+        self.receive_expected(Command::Version, Some(Duration::from_secs(60)))
+            .await?;
+        self.send(Command::Verack, Verack {}).await?;
+        self.receive_expected(Command::Verack, Some(Duration::from_secs(60)))
+            .await?;
         Ok(())
     }
-    pub async fn accept_handshake(&mut self) -> Result<()> {
+    pub async fn accept_handshake(&mut self, best_block: Option<u32>) -> Result<()> {
+        let version_msg = Version::new(
+            self.ip_address.clone(),
+            self.services,
+            self.daemon_address,
+            best_block.unwrap_or(0),
+            &self.config,
+        );
+        self.receive_expected(Command::Version, Some(Duration::from_secs(60)))
+            .await?;
+        self.send(Command::Version, version_msg).await?;
+        self.send(Command::Verack, Verack {}).await?;
+        self.receive_expected(Command::Verack, None).await?;
         Ok(())
-        // let version_response = self
-        //     .receive_header_and_discard_body(Some(Duration::from_secs(60)))
-        //     .await?;
-        // match version_response {
-        //     Command::Version => {
-        //         self.send(Command::Version).await?; //sending version message
-        //     }
-        //     _ => {
-        //         return Err(PeerError::Message(format!(
-        //             "Expected Version message but got {:?}",
-        //             version_response
-        //         )))
-        //     }
-        // }
-        // self.send(Command::Verack).await?;
-        // let verack_response = self
-        //     .receive_header_and_discard_body(Some(Duration::from_secs(60)))
-        //     .await?;
-        // match verack_response {
-        //     Command::Verack => return Ok(()),
-        //     _ => {
-        //         return Err(PeerError::Message(format!(
-        //             "Expected Verack message but got {:?}",
-        //             verack_response
-        //         )))
-        //     }
-        // }
     }
 }
 
