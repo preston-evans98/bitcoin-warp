@@ -1,7 +1,7 @@
 use config::Config;
 use log::warn;
 use serde_derive::{Deserializable, Serializable};
-use shared::u256;
+use shared::{u256, CompactInt, Serializable};
 
 #[derive(Serializable, Deserializable)]
 pub struct GetBlocks {
@@ -32,6 +32,13 @@ impl GetBlocks {
         message
     }
 
+    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error>{
+        let mut size = 0;
+        size += 4 + CompactInt::size(self.block_header_hashes.len()) + (self.block_header_hashes.len() * 32) + 32; //protocol version, block header hashes, and stop_hash
+        let mut target = Vec::with_capacity(size);
+        self.serialize(&mut target)?;
+        Ok(target)
+    }
     // pub fn new(payload: Payload::GetBlocksPayload,config: &Config) -> GetBlocks {
     //     let mut message = GetBlocks {
     //         protocol_version: config.get_protocol_version(),
