@@ -1,5 +1,8 @@
+use byteorder::{ReadBytesExt, LittleEndian};
 use config::Config;
-use shared::{u256, Serializable};
+use serde_derive::{Deserializable, Serializable};
+use shared::u256;
+#[derive(Serializable, Deserializable)]
 pub struct GetData {
     inventory: Vec<InventoryData>,
 }
@@ -13,7 +16,7 @@ pub enum InventoryType {
     WitnessBlock = 6,
     FilteredWitnessBlock = 7,
 }
-impl Serializable for InventoryType {
+impl shared::Serializable for InventoryType {
     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
     where
         W: std::io::Write,
@@ -21,6 +24,31 @@ impl Serializable for InventoryType {
         (*self as u32).serialize(target)
     }
 }
+impl shared::Deserializable for InventoryType {
+    fn deserialize<R>(target: &mut R) -> Result<Self, shared::DeserializationError>
+    where
+        R: std::io::Read,
+    {
+        let value = target.read_u32::<LittleEndian>()?;
+        match value {
+            1 => Ok(InventoryType::Tx),
+
+            2 => Ok(InventoryType::Block),
+
+            3 => Ok(InventoryType::FilteredBlock),
+
+            4 => Ok(InventoryType::CompactBlock),
+
+            5 => Ok(InventoryType::WitnessTx),
+
+            6 => Ok(InventoryType::WitnessBlock),
+
+            7 => Ok(InventoryType::FilteredWitnessBlock),
+            _ => Err(shared::DeserializationError::Parse(format!("Unreadable Inventory Type: {}", value)))
+        }
+    }
+}
+#[derive(Serializable, Deserializable)]
 pub struct InventoryData {
     pub inventory_type: InventoryType,
     pub hash: u256,

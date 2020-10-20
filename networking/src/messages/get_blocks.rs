@@ -1,7 +1,9 @@
 use config::Config;
 use log::warn;
+use serde_derive::{Deserializable, Serializable};
 use shared::u256;
 
+#[derive(Serializable, Deserializable)]
 pub struct GetBlocks {
     protocol_version: u32,
     block_header_hashes: Vec<u256>,

@@ -1,3 +1,4 @@
+use crate::message::Message;
 use config::Config;
 use serde_derive::{Deserializable, Serializable};
 use shared::{Bytes, CompactInt, Deserializable, DeserializationError};
@@ -42,6 +43,7 @@ impl Version {
         }
     }
 }
+
 //Body of message.rs for reference
 //Can be deleted after from method is made
 // let mut msg = Message::new();

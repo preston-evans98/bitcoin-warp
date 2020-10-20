@@ -2,8 +2,9 @@ use crate::command::Command;
 use crate::header::Header;
 use crate::message::Message;
 use crate::messages::{Block, GetBlocks, GetData, GetHeaders, InventoryData, Transaction, Version};
+use crate::payload::Payload;
 use config::Config;
-use shared::{u256, DeserializationError,Serializable,Deserializable};
+use shared::{u256, Deserializable, DeserializationError, Serializable};
 use std::fmt;
 use std::io::Cursor;
 use std::net::SocketAddr;
@@ -94,74 +95,15 @@ impl<'a> Peer<'a> {
             config,
         }
     }
-    pub async fn send(&mut self, command: Command) -> Result<()> {
-        match command {
-            Command::Version => {
-                let message = Version::new(
-                    self.ip_address,
-                    self.services,
-                    self.daemon_address,
-                    self.get_best_block(),
-                    &Config::mainnet(),
-                );
-                let header = Header::from(Config::mainnet().magic(),Command::Version,message);
-                self.connection.write(header.serialize()).await?;
-                self.connection.write(message.serialize()).await?;
-            }
-            Command::Verack => {}
-            Command::GetBlocks => {
-                let message: GetBlocks =GetBlocks::new(self.get_block_hashes(), true, &Config::mainnet());
-                let header = Header::from(Config::mainnet().magic(),Command::GetBlocks,message);
-                self.connection.write(header.serialize()).await?;
-                self.connection.write(message.serialize()).await?;
-            }
-            Command::GetData => {
-                let message: GetData = GetData::new(self.get_inventory_data(), &Config::mainnet());
-                let header = Header::from(Config::mainnet().magic(),Command::GetData,message);
-                self.connection.write(header.serialize()).await?;
-                self.connection.write(message.serialize()).await?;      
-            }
-            Command::Block => {
-                let message: Block = Block::new(self.get_block_transactions(u256::from(256))); //need to actually get the block hash header for the block we need
-                let header = Header::from(Config::mainnet().magic(),Command::Block,message);
-                self.connection.write(header.serialize()).await?;
-                self.connection.write(message.serialize()).await?;
-            }
-            Command::GetHeaders => {
-                let message: GetHeaders = GetHeaders::new(self.get_block_hashes(), false, &Config::mainnet());
-                let header = Header::from(Config::mainnet().magic(),Command::GetHeaders,message);
-                self.connection.write(header.serialize()).await?;
-                self.connection.write(message.serialize()).await?;
-            }
-        }
-        //message.create_header_for_body(command, self.config.magic());
-        // self.connection.write(header.serialize()).await?;
-        // self.connection.write(message.serialize()).await?;
+    pub async fn send<T>(&mut self, command: Command, config: &'a Config, payload: T) -> Result<()>
+    where
+        T: Payload,
+    {
+        let raw_msg = payload.to_bytes()?;
+        let raw_header = Header::from_body(config.magic(), command, &raw_msg).to_bytes();
+        self.connection.write_all(&raw_header).await?;
+        self.connection.write_all(&raw_msg).await?;
         Ok(())
-    }
-
-    pub async fn receive_header_and_discard_body(
-        &mut self,
-        timeout_duration: Option<Duration>,
-    ) -> Result<Command>
-where {
-        let mut buf = [0u8; 24];
-        if let Some(duration) = timeout_duration {
-            timeout(duration, self.connection.read_exact(&mut buf)).await??;
-        } else {
-            self.connection.read_exact(&mut buf).await?;
-        }
-        println!("Received raw response. Deserializing.");
-        let header = Header::deserialize(&mut Cursor::new(buf), self.config.magic())?;
-        println!("Received header: {:?}", header.get_command());
-        let mut discard = Vec::with_capacity(header.get_payload_size());
-        if let Some(duration) = timeout_duration {
-            timeout(duration, self.connection.read_exact(&mut discard)).await??;
-        } else {
-            self.connection.read_exact(&mut discard).await?;
-        }
-        println!("Returning header: {:?}", header.get_command());
-        Ok(header.get_command())
     }
 
     pub fn get_ip_address(&self) -> SocketAddr {
@@ -190,63 +132,178 @@ where {
         Vec::new()
     }
     pub async fn perform_handshake(&mut self) -> Result<()> {
-        self.send(Command::Version).await?; //sending version message
-        println!("Sent Version");
-        let version_response = self
-            .receive_header_and_discard_body(Some(Duration::from_secs(60)))
-            .await?;
-        match version_response {
-            Command::Version => {
-                self.send(Command::Verack).await?;
-                println!("Sent Verack");
-            }
-            _ => {
-                return Err(PeerError::Message(format!(
-                    "Expected Version but got {:?}",
-                    version_response
-                )))
-            }
-        }
-        let verack_response = self
-            .receive_header_and_discard_body(Some(Duration::from_secs(60)))
-            .await?;
-        match verack_response {
-            Command::Verack => return Ok(()),
-            _ => {
-                return Err(PeerError::Message(format!(
-                    "Expected Verack message but got {:?}",
-                    verack_response
-                )))
-            }
-        }
+        // self.send(Command::Version).await?; //sending version message
+        // println!("Sent Version");
+        // let version_response = self
+        //     .receive_header_and_discard_body(Some(Duration::from_secs(60)))
+        //     .await?;
+        // match version_response {
+        //     Command::Version => {
+        //         self.send(Command::Verack).await?;
+        //         println!("Sent Verack");
+        //     }
+        //     _ => {
+        //         return Err(PeerError::Message(format!(
+        //             "Expected Version but got {:?}",
+        //             version_response
+        //         )))
+        //     }
+        // }
+        // let verack_response = self
+        //     .receive_header_and_discard_body(Some(Duration::from_secs(60)))
+        //     .await?;
+        // match verack_response {
+        //     Command::Verack => return Ok(()),
+        //     _ => {
+        //         return Err(PeerError::Message(format!(
+        //             "Expected Verack message but got {:?}",
+        //             verack_response
+        //         )))
+        //     }
+        // }
+        Ok(())
     }
     pub async fn accept_handshake(&mut self) -> Result<()> {
-        let version_response = self
-            .receive_header_and_discard_body(Some(Duration::from_secs(60)))
-            .await?;
-        match version_response {
-            Command::Version => {
-                self.send(Command::Version).await?; //sending version message
-            }
-            _ => {
-                return Err(PeerError::Message(format!(
-                    "Expected Version message but got {:?}",
-                    version_response
-                )))
-            }
-        }
-        self.send(Command::Verack).await?;
-        let verack_response = self
-            .receive_header_and_discard_body(Some(Duration::from_secs(60)))
-            .await?;
-        match verack_response {
-            Command::Verack => return Ok(()),
-            _ => {
-                return Err(PeerError::Message(format!(
-                    "Expected Verack message but got {:?}",
-                    verack_response
-                )))
-            }
-        }
+        Ok(())
+        // let version_response = self
+        //     .receive_header_and_discard_body(Some(Duration::from_secs(60)))
+        //     .await?;
+        // match version_response {
+        //     Command::Version => {
+        //         self.send(Command::Version).await?; //sending version message
+        //     }
+        //     _ => {
+        //         return Err(PeerError::Message(format!(
+        //             "Expected Version message but got {:?}",
+        //             version_response
+        //         )))
+        //     }
+        // }
+        // self.send(Command::Verack).await?;
+        // let verack_response = self
+        //     .receive_header_and_discard_body(Some(Duration::from_secs(60)))
+        //     .await?;
+        // match verack_response {
+        //     Command::Verack => return Ok(()),
+        //     _ => {
+        //         return Err(PeerError::Message(format!(
+        //             "Expected Verack message but got {:?}",
+        //             verack_response
+        //         )))
+        //     }
+        // }
     }
 }
+
+// pub async fn send(&mut self, command: Command) -> Result<()> {
+//     // TODO: Allocate intelligently
+//     let mut body: Vec<u8> = Vec::new();
+//     match command {
+//         Command::Version => Version::new(
+//             self.ip_address,
+//             self.services,
+//             self.daemon_address,
+//             self.get_best_block(),
+//             &Config::mainnet(),
+//         )
+//         .serialize(&mut body)?,
+//         Command::GetBlocks => GetBlocks::new(self.get_block_hashes(), true, &Config::mainnet())
+//             .serialize(&mut body)?,
+//         Command::GetData => GetData::new(self.get_inventory_data(), &Config::mainnet()).serialize(&mut body)?,
+
+//     Command::Block =>
+//         Block::new(self.get_block_transactions(u256::from(0))).serialize(&mut body)?; //need to actually get the block hash header for the block we need
+
+//     Command::GetHeaders => {
+//         let message: GetHeaders =
+//             GetHeaders::new(self.get_block_hashes(), false, &Config::mainnet());
+//         let header = Header::from_body(Config::mainnet().magic(), Command::GetHeaders, message);
+//         let mut out = Vec::with_capacity(header.get_payload_size());
+//         header.serialize(&mut out)?;
+//         self.connection.write(&mut out);
+//         message.serialize(out)
+//         self.connection.write(&mut out).await?;
+//     }
+//     // }
+//         _ => {}
+//     };
+//     //     // message.serialize(serialized)
+//     //     // let header = Header::from_body(Config::mainnet().magic(), Command::Version, message);
+//     //     // let mut out = Vec::with_capacity(header.get_payload_size());
+//     //     // header.serialize(&mut out)?;
+//     //     // self.connection.write(&mut out);
+//     //     // message.serialize(out)
+//     //     // self.connection.write(&mut out).await?;
+//     // }
+//     // Command::Verack => {
+//     //     Vec::new()
+//     // }
+//     // Command::GetBlocks => {
+
+//     //     // let message: GetBlocks =
+//     //     //     GetBlocks::new(self.get_block_hashes(), true, &Config::mainnet());
+//     //     // let header = Header::from_body(Config::mainnet().magic(), Command::GetBlocks, message);
+//     //     // let mut out = Vec::with_capacity(header.get_payload_size());
+//     //     // header.serialize(&mut out)?;
+//     //     // self.connection.write(&mut out);
+//     //     // message.serialize(out)
+//     //     // self.connection.write(&mut out).await?;
+//     // }
+//     // Command::GetData => {
+//     //     let message: GetData = GetData::new(self.get_inventory_data(), &Config::mainnet());
+//     //     let header = Header::from_body(Config::mainnet().magic(), Command::GetData, message);
+//     //     let mut out = Vec::with_capacity(header.get_payload_size());
+//     //     header.serialize(&mut out)?;
+//     //     self.connection.write(&mut out);
+//     //     message.serialize(out)
+//     //     self.connection.write(&mut out).await?;
+//     // }
+//     // Command::Block => {
+//     //     let message: Block = Block::new(self.get_block_transactions(u256::from(256))); //need to actually get the block hash header for the block we need
+//     //     let header = Header::from_body(Config::mainnet().magic(), Command::Block, message);
+//     //     let mut out = Vec::with_capacity(header.get_payload_size());
+//     //     header.serialize(&mut out)?;
+//     //     self.connection.write(&mut out);
+//     //     message.serialize(out)
+//     //     self.connection.write(&mut out).await?;
+//     // }
+//     // Command::GetHeaders => {
+//     //     let message: GetHeaders =
+//     //         GetHeaders::new(self.get_block_hashes(), false, &Config::mainnet());
+//     //     let header = Header::from_body(Config::mainnet().magic(), Command::GetHeaders, message);
+//     //     let mut out = Vec::with_capacity(header.get_payload_size());
+//     //     header.serialize(&mut out)?;
+//     //     self.connection.write(&mut out);
+//     //     message.serialize(out)
+//     //     self.connection.write(&mut out).await?;
+//     // }
+//     // }
+//     //message.create_header_for_body(command, self.config.magic());
+//     // self.connection.write(header.serialize()).await?;
+//     // self.connection.write(message.serialize()).await?;
+//     Ok(())
+// }
+
+//     pub async fn receive_header_and_discard_body(
+//         &mut self,
+//         timeout_duration: Option<Duration>,
+//     ) -> Result<Command>
+// where {
+//         let mut buf = [0u8; 24];
+//         if let Some(duration) = timeout_duration {
+//             timeout(duration, self.connection.read_exact(&mut buf)).await??;
+//         } else {
+//             self.connection.read_exact(&mut buf).await?;
+//         }
+//         println!("Received raw response. Deserializing.");
+//         let header = Header::deserialize(&mut Cursor::new(buf), self.config.magic())?;
+//         println!("Received header: {:?}", header.get_command());
+//         let mut discard = Vec::with_capacity(header.get_payload_size());
+//         if let Some(duration) = timeout_duration {
+//             timeout(duration, self.connection.read_exact(&mut discard)).await??;
+//         } else {
+//             self.connection.read_exact(&mut discard).await?;
+//         }
+//         println!("Returning header: {:?}", header.get_command());
+//         Ok(header.get_command())
+//     }
