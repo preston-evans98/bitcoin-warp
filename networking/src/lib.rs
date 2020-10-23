@@ -24,17 +24,17 @@ pub use messages::Version;
 
 #[cfg(test)]
 mod tests {
+    use crate::header::Header;
     use crate::Command;
-    use crate::Message;
     use crate::Peer;
     use config::Config;
+    use shared::Bytes;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     #[test]
     fn test_verack() {
-        let mut message = Message::new();
-        message.create_header_for_body(Command::Verack, Config::mainnet().magic());
+        let header = Header::from_body(Config::mainnet().magic(), Command::Verack, &Vec::new());
         assert_eq!(
-            message.get_header().hex(),
+            Bytes::from(header.to_bytes()).hex(),
             "f9beb4d976657261636b000000000000000000005df6e0e2"
         )
     }
@@ -42,6 +42,8 @@ mod tests {
 
     #[test]
     fn test_version_serialize() {
+        use crate::payload::Payload;
+        use shared::Serializable;
         let foreign_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8333);
         let local_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8333);
         let version = Version::new(
@@ -51,11 +53,9 @@ mod tests {
             0 as u32,
             &Config::mainnet(),
         );
-
-        // assert_eq!(
-        //     version.hex(),
-        //     version.serialize()
-        // )
+        let mut target = Vec::new();
+        version.serialize(&mut target).unwrap();
+        assert_eq!(version.to_bytes().unwrap(), target);
         // Peer::at_address(1, address, &Config::mainnet());
 
         //peer_connect::outbound_connection();

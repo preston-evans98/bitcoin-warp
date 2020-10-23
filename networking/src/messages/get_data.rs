@@ -1,7 +1,7 @@
-use byteorder::{ReadBytesExt, LittleEndian};
+use byteorder::{LittleEndian, ReadBytesExt};
 use config::Config;
 use serde_derive::{Deserializable, Serializable};
-use shared::u256;
+use shared::{u256, CompactInt, Serializable};
 #[derive(Serializable, Deserializable)]
 pub struct GetData {
     inventory: Vec<InventoryData>,
@@ -44,7 +44,10 @@ impl shared::Deserializable for InventoryType {
             6 => Ok(InventoryType::WitnessBlock),
 
             7 => Ok(InventoryType::FilteredWitnessBlock),
-            _ => Err(shared::DeserializationError::Parse(format!("Unreadable Inventory Type: {}", value)))
+            _ => Err(shared::DeserializationError::Parse(format!(
+                "Unreadable Inventory Type: {}",
+                value
+            ))),
         }
     }
 }
@@ -60,7 +63,7 @@ impl InventoryData {
             hash: hash,
         }
     }
-    pub fn len(&self) -> usize{
+    pub fn len(&self) -> usize {
         4 + 32 //inventory type  and hash
     }
 }
@@ -81,9 +84,9 @@ impl GetData {
         //message.create_header_for_body(Command::GetData, config.magic());
         message
     }
-    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error>{
+    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
         let mut size = 0;
-        for inv in self.inventory{
+        for inv in self.inventory.iter() {
             size += inv.len();
         }
         let mut target = Vec::with_capacity(size + CompactInt::size(self.inventory.len()));

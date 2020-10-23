@@ -10,4 +10,5 @@ edition = "2018"
 config = { path = "../config" }
 networking = { path = "../networking" }
 serde_derive = { path = "../serde_derive" }
+shared = { path = "../shared" }
 hex = "0.4.2"

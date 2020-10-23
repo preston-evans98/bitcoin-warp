@@ -1,5 +1,5 @@
 use serde_derive::{Deserializable, Serializable};
-use shared::{u256, Deserializable, DeserializationError, Serializable, CompactInt};
+use shared::{u256, CompactInt, Deserializable, DeserializationError, Serializable};
 
 #[derive(Deserializable, Serializable)]
 pub struct Transaction {
@@ -7,15 +7,15 @@ pub struct Transaction {
     inputs: Vec<TxInput>,
     outputs: Vec<TxOutput>,
 }
-impl Transaction{
-    pub fn len(&self) -> usize{
+impl Transaction {
+    pub fn len(&self) -> usize {
         let mut size = 0;
         size += 4 + CompactInt::size(self.inputs.len());
-        for input in self.inputs{
+        for input in self.inputs.iter() {
             size += input.len();
         }
         size += CompactInt::size(self.outputs.len());
-        for output in self.outputs{
+        for output in self.outputs.iter() {
             size += output.len();
         }
         size
@@ -27,9 +27,12 @@ pub struct TxInput {
     signature_script: Vec<u8>,
     sequence: u32, // Sequence number. Default for Bitcoin Core and almost all other programs is 0xffffffff.
 }
-impl TxInput{
-    pub fn len(&self) -> usize{
-        self.previous_outpoint.len()+ CompactInt::size(self.signature_script.len()) + self.signature_script.len() + 4
+impl TxInput {
+    pub fn len(&self) -> usize {
+        self.previous_outpoint.len()
+            + CompactInt::size(self.signature_script.len())
+            + self.signature_script.len()
+            + 4
     }
 }
 #[derive(Deserializable, Serializable)]
@@ -37,8 +40,8 @@ pub struct TxOutput {
     value: i64,
     pk_script: Vec<u8>,
 }
-impl TxOutput{
-    pub fn len(&self) -> usize{
+impl TxOutput {
+    pub fn len(&self) -> usize {
         8 + CompactInt::size(self.pk_script.len()) + self.pk_script.len()
     }
 }
@@ -47,8 +50,8 @@ pub struct TxOutpoint {
     hash: u256,
     index: u32,
 }
-impl TxOutpoint{
-    pub fn len(&self) -> usize{
+impl TxOutpoint {
+    pub fn len(&self) -> usize {
         32 + 4
     }
 }
@@ -65,9 +68,9 @@ impl Block {
         message
     }
 
-    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error>{
+    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
         let mut size = 0;
-        for transaction in self.transactions{
+        for transaction in self.transactions.iter() {
             size += transaction.len();
         }
         let mut target = Vec::with_capacity(size + CompactInt::size(self.transactions.len()));
