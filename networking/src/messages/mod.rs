@@ -4,6 +4,9 @@ pub use version::Version;
 mod verack;
 pub use verack::Verack;
 
+mod headers;
+pub use headers::Headers;
+
 mod get_blocks;
 pub use get_blocks::GetBlocks;
 

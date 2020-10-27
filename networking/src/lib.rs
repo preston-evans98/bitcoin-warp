@@ -12,6 +12,8 @@ pub use payload::Payload;
 
 mod header;
 
+mod block_header;
+
 mod messages;
 pub use messages::Block;
 pub use messages::GetBlocks;
