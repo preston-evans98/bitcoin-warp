@@ -86,6 +86,7 @@ impl<'a> Peer<'a> {
         })
     }
     pub async fn from_connection(id: usize, connection: TcpStream, config: &'a Config) -> Peer<'a> {
+        println!("Receiving from {:?}", connection.peer_addr());
         Peer {
             peer_id: id,
             services: 0,
@@ -140,14 +141,25 @@ impl<'a> Peer<'a> {
         let mut header_buf = [0u8; 24];
         let ttl = timeout_duration.unwrap_or(Duration::from_secs(60 * 89)); // Timeout after at  89 minutes by default.
         timeout(ttl, self.connection.read_exact(&mut header_buf)).await??;
+        println!(
+            "Header: {}",
+            shared::Bytes::from(Vec::from(header_buf)).hex()
+        );
         let header = Header::deserialize(&mut Cursor::new(header_buf), self.config.magic())?;
+
         let mut payload = Vec::with_capacity(header.get_payload_size());
+        payload.resize(header.get_payload_size(), 0);
+        println!("Allocated {} bytes for payload.", payload.len());
         // Require body to be present within 1 second of header's arrival
         timeout(
             Duration::from_secs(1),
             self.connection.read_exact(&mut payload),
         )
         .await??;
+        println!(
+            "Body: {}",
+            shared::Bytes::from(Vec::from(payload.clone())).hex()
+        );
         Ok((header, payload))
     }
     pub async fn receive_expected(
@@ -177,9 +189,9 @@ impl<'a> Peer<'a> {
         self.send(Command::Version, version_msg).await?;
         self.receive_expected(Command::Version, Some(Duration::from_secs(60)))
             .await?;
-        self.send(Command::Verack, Verack {}).await?;
         self.receive_expected(Command::Verack, Some(Duration::from_secs(60)))
             .await?;
+        self.send(Command::Verack, Verack {}).await?;
         Ok(())
     }
     pub async fn accept_handshake(&mut self, best_block: Option<u32>) -> Result<()> {
