@@ -1,5 +1,7 @@
 use serde_derive::{Deserializable, Serializable};
 use shared::{u256, CompactInt, Deserializable, DeserializationError, Serializable};
+use crate::block_header::BlockHeader;
+
 
 #[derive(Deserializable, Serializable)]
 pub struct Transaction {
@@ -59,12 +61,14 @@ impl TxOutpoint {
 pub struct CoinbaseInput {}
 #[derive(Deserializable, Serializable)]
 pub struct Block {
+    block_header: BlockHeader,
+    transaction_count: CompactInt,
     transactions: Vec<Transaction>,
 }
 
 impl Block {
-    pub fn new(txs: Vec<Transaction>) -> Block {
-        let message = Block { transactions: txs };
+    pub fn new(header: BlockHeader, txs: Vec<Transaction>) -> Block {
+        let message = Block {block_header: header, transaction_count: CompactInt::from(txs.len()), transactions: txs };
         message
     }
 
