@@ -1,12 +1,9 @@
 use crate::command::Command;
 use crate::header::Header;
-use crate::message::Message;
-use crate::messages::{
-    Block, GetBlocks, GetData, GetHeaders, InventoryData, Transaction, Verack, Version,
-};
+use crate::messages::{InventoryData, Verack, Version};
 use crate::payload::Payload;
 use config::Config;
-use shared::{u256, Deserializable, DeserializationError, Serializable};
+use shared::{u256, DeserializationError};
 use std::fmt;
 use std::io::Cursor;
 use std::net::SocketAddr;
@@ -130,10 +127,7 @@ impl<'a> Peer<'a> {
         //needs to get the actual data that we want to request from peer and put it in an InventoryData object
         Vec::new()
     }
-    pub fn get_block_transactions(&self, block_header_hash: u256) -> Vec<Transaction> {
-        //needs to retrieve the transactions for the block that is passed in to block_header_hash
-        Vec::new()
-    }
+
     pub async fn receive(
         &mut self,
         timeout_duration: Option<Duration>,

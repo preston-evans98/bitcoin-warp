@@ -12,7 +12,7 @@ pub struct GetBlocks {
 
 impl GetBlocks {
     pub fn new(block_hashes: Vec<u256>, inv_message: bool, config: &Config) -> GetBlocks {
-        let mut message = GetBlocks {
+        let message = GetBlocks {
             protocol_version: config.get_protocol_version(),
             block_header_hashes: block_hashes,
             stop_hash: u256::new(),
@@ -23,7 +23,7 @@ impl GetBlocks {
             //if you need more than 500, you will need to send another “getblocks” message with a higher-height
             //header hash as the first entry in block header hash field).
             match message.block_header_hashes.last() {
-                Some(hash) => {} // message.stop_hash = *hash.clone(),
+                Some(_) => {} // message.stop_hash = *hash.clone(),
                 None => {
                     warn!("GetBlocks: stop hash was empty");
                 }
@@ -32,9 +32,12 @@ impl GetBlocks {
         message
     }
 
-    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error>{
+    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
         let mut size = 0;
-        size += 4 + CompactInt::size(self.block_header_hashes.len()) + (self.block_header_hashes.len() * 32) + 32; //protocol version, block header hashes, and stop_hash
+        size += 4
+            + CompactInt::size(self.block_header_hashes.len())
+            + (self.block_header_hashes.len() * 32)
+            + 32; //protocol version, block header hashes, and stop_hash
         let mut target = Vec::with_capacity(size);
         self.serialize(&mut target)?;
         Ok(target)

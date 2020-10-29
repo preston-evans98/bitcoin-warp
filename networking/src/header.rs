@@ -1,6 +1,6 @@
 use crate::command::Command;
 use serde_derive::{Deserializable, Serializable};
-use shared::{Bytes, Deserializable, DeserializationError, Serializable};
+use shared::{Deserializable, DeserializationError, Serializable};
 
 #[derive(Deserializable, Serializable)]
 pub struct Header {
@@ -51,7 +51,8 @@ impl Header {
     }
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut result = Vec::with_capacity(24);
-        self.serialize(&mut result);
+        self.serialize(&mut result)
+            .expect("Serializing to vec should not fail!");
         result
     }
 }

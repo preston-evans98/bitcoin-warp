@@ -69,8 +69,8 @@ impl InventoryData {
 }
 
 impl GetData {
-    pub fn new(temp_inventory: Vec<InventoryData>, config: &Config) -> GetData {
-        let mut message = GetData {
+    pub fn new(temp_inventory: Vec<InventoryData>, _config: &Config) -> GetData {
+        let message = GetData {
             inventory: temp_inventory,
         };
         // for x in inventory.iter() {

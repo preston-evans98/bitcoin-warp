@@ -25,9 +25,7 @@ impl shared::Deserializable for Nbits {
         R: std::io::Read,
     {
         let compressed_target = target.read_u32::<LittleEndian>()?;
-        println!("{:x}", compressed_target);
         let mantissa: u32 = compressed_target & 0x00FFFFFF;
-        println!("mantissa: {:x}", mantissa);
         // To replicate a bug in core: If the mantissa starts with 0b1, return 0.
         if mantissa & 0x00800000 != 0 {
             return Ok(Nbits {
@@ -35,7 +33,6 @@ impl shared::Deserializable for Nbits {
             });
         }
         let mut exponent = (compressed_target & 0xFF000000) >> 24;
-        println!("exponent: {}", exponent);
         let mut raw_target = [0u8; 32];
         for i in (0..=2).rev() {
             if exponent == 0 {
@@ -44,7 +41,6 @@ impl shared::Deserializable for Nbits {
             exponent -= 1;
             raw_target[exponent as usize] = (mantissa >> (8 * i)) as u8;
         }
-        println!("{:?}", raw_target);
         Ok(Nbits {
             target: u256::deserialize(&mut std::io::Cursor::new(raw_target))?,
         })
@@ -99,17 +95,12 @@ impl shared::Serializable for Nbits {
             if val != 0 && !hit_significand {
                 hit_significand = true;
                 exponent = 32 - (rev_index as u32);
-                println!("Val: {}, Expt: {}", val, exponent);
             }
 
             // Setp 2.
             if hit_significand {
                 remaining_slots -= 1;
                 significand += (val as u32) << (remaining_slots * 8);
-                println!(
-                    "Significand: 0x{:x}, remaining slots: {}",
-                    significand, remaining_slots
-                );
             }
         }
         // println!();
@@ -119,11 +110,8 @@ impl shared::Serializable for Nbits {
             significand >>= 8;
             exponent += 1;
         }
-        println!("Significand: {}, Expt: {}", significand, exponent);
         // Store the exponent as the MSB and the
         let result = significand | (exponent << 24);
-        println!("{:x}", result);
-        println!("{:x}", exponent << 24);
         result.serialize(target)
     }
 }

@@ -1,7 +1,7 @@
 use config::Config;
 use log::warn;
 use serde_derive::{Deserializable, Serializable};
-use shared::{u256, CompactInt, Deserializable, Serializable};
+use shared::{u256, CompactInt, Serializable};
 
 #[derive(Serializable, Deserializable)]
 pub struct GetHeaders {
@@ -12,7 +12,7 @@ pub struct GetHeaders {
 
 impl GetHeaders {
     pub fn new(block_hashes: Vec<u256>, inv_message: bool, config: &Config) -> GetHeaders {
-        let mut message = GetHeaders {
+        let message = GetHeaders {
             protocol_version: config.get_protocol_version(),
             block_header_hashes: block_hashes,
             stop_hash: u256::new(),
@@ -23,7 +23,7 @@ impl GetHeaders {
             //if you need more than 2000, you will need to send another "getheaders" message with a higher-height
             //header hash as the first entry in block header hash field).
             match message.block_header_hashes.last() {
-                Some(hash) => {} // message.stop_hash = *hash.clone(),
+                Some(_) => {} // message.stop_hash = *hash.clone(),
                 None => {
                     warn!("GetHeaders: stop hash was empty");
                 }
