@@ -11,6 +11,13 @@ pub struct BlockHeader {
     nonce: u32,
 }
 
+impl BlockHeader {
+    // Returns length of serialized header in bytes
+    pub fn len() -> usize {
+        80
+    }
+}
+
 pub struct Nbits {
     target: u256,
 }
