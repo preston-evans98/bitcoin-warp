@@ -28,11 +28,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let command = Command::Version;
     let config = Config::mainnet();
     // let addr = SocketAddr::from(([192, 168, 1, 2], 8333));
-    let addr = SocketAddr::from(([192, 168, 1, 7], 8333));
+    let addr = SocketAddr::from(([192, 168, 1, 8], 8333));
     let mut raspi = Peer::at_address(1, addr, &config).await.unwrap();
 
     // let mut peer2 = Peer::at_address(1, addr2, &config).await.unwrap();
-    let result = raspi.perform_handshake().await;
+    let result = raspi.perform_handshake(None).await;
     println!("{:?}", result);
     // raspi.send(command).await;
     // execute_command(command, daemon);
