@@ -4,7 +4,16 @@ use crate::block_header::BlockHeader;
 pub struct MerkleBlock{
     block_header: BlockHeader,
     transaction_count: u32,
-    hash_count: CompactInt,
-    hashes: Vec<u256>
-    //need to add the rest here
+    //hashCount
+    hashes: Vec<u256>, 
+    //flagByteCount
+    flags: Vec<Bytes>
+}
+
+pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error>{
+    let mut size = 0;
+    size += self.block_header.to_bytes()? + 4 + CompactInt::size(self.hashes.len()) + (self.hashes.len() * 32) + CompactInt::size(self.flags.len()) + self.flags.len(); //32 bytes for each "hash" as they are u256
+    let mut target = Vec::with_capacity(size);
+    self.serialize(&mut target)?;
+    Ok(target)
 }
