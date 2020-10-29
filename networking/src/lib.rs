@@ -13,6 +13,7 @@ pub use payload::Payload;
 mod header;
 
 mod block_header;
+pub use block_header::{BlockHeader, Nbits};
 
 mod messages;
 pub use messages::Block;
@@ -28,7 +29,6 @@ pub use messages::Version;
 mod tests {
     use crate::header::Header;
     use crate::Command;
-    use crate::Peer;
     use config::Config;
     use shared::Bytes;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};

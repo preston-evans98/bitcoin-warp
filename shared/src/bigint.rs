@@ -67,10 +67,17 @@ impl u256 {
     }
     // writes contents to big_endian hex
     pub fn to_hex(&self) -> String {
-        format!(
-            "{:x}{:x}{:x}{:x}",
-            self.0[3], self.0[2], self.0[1], self.0[0]
-        )
+        if self.0[3] != 0 {
+            return format!(
+                "{:x}{:x}{:x}{:x}",
+                self.0[3], self.0[2], self.0[1], self.0[0]
+            );
+        } else if self.0[2] != 0 {
+            return format!("{:x}{:x}{:x}", self.0[2], self.0[1], self.0[0]);
+        } else if self.0[1] != 0 {
+            return format!("{:x}{:x}", self.0[1], self.0[0]);
+        }
+        format!("{:x}", self.0[0])
     }
 }
 
