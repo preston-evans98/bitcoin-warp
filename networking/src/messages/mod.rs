@@ -24,3 +24,6 @@ pub use get_headers::GetHeaders;
 
 mod compact_block;
 pub use compact_block::{CompactBlock, PrefilledTransaction};
+
+mod send_compact;
+pub use send_compact::SendCompact;
