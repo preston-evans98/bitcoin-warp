@@ -27,3 +27,6 @@ pub use compact_block::{CompactBlock, PrefilledTransaction};
 
 mod send_compact;
 pub use send_compact::SendCompact;
+
+mod get_block_txn;
+pub use get_block_txn::GetBlockTxn;

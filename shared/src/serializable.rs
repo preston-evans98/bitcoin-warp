@@ -131,6 +131,15 @@ impl Serializable for [u8; 4] {
     }
 }
 
+impl Serializable for [u8; 32] {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_all(self)
+    }
+}
+
 impl<T> Serializable for Vec<T>
 where
     T: Serializable,
