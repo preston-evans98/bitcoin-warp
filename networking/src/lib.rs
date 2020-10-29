@@ -15,6 +15,9 @@ mod header;
 mod block_header;
 pub use block_header::{BlockHeader, Nbits};
 
+mod transaction;
+pub use transaction::{Transaction, TxInput,TxOutput,TxOutpoint, CoinbaseInput};
+
 mod messages;
 pub use messages::Block;
 pub use messages::GetBlocks;

@@ -17,7 +17,6 @@ pub use get_data::InventoryType;
 
 mod block;
 pub use block::Block;
-pub use block::Transaction;
 
 mod get_headers;
 pub use get_headers::GetHeaders;

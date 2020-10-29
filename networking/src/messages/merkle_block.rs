@@ -1,5 +1,6 @@
 use crate::block_header::BlockHeader;
-
+use serde_derive::{Deserializable, Serializable};
+use shared::{CompactInt, Serializable};
 #[derive(Deserializable, Serializable)]
 pub struct MerkleBlock{
     block_header: BlockHeader,
