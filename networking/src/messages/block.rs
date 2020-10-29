@@ -61,7 +61,6 @@ pub struct CoinbaseInput {}
 #[derive(Deserializable, Serializable)]
 pub struct Block {
     block_header: BlockHeader,
-    transaction_count: CompactInt,
     transactions: Vec<Transaction>,
 }
 
@@ -69,14 +68,15 @@ impl Block {
     pub fn new(header: BlockHeader, txs: Vec<Transaction>) -> Block {
         let message = Block {
             block_header: header,
-            transaction_count: CompactInt::from(txs.len()),
             transactions: txs,
         };
         message
     }
-
-    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+}
+impl crate::payload::Payload for Block{ 
+    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
         let mut size = 0;
+        size += BlockHeader::len();
         for transaction in self.transactions.iter() {
             size += transaction.len();
         }

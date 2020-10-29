@@ -23,7 +23,9 @@ impl Inv {
         //message.create_header_for_body(Command::GetData, config.magic());
         message
     }
-    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+}
+impl crate::payload::Payload for Inv{
+    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
         let mut size = 0;
         for inv in self.inventory.iter() {
             size += inv.len();

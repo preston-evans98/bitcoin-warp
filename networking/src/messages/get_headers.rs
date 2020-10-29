@@ -31,7 +31,9 @@ impl GetHeaders {
         }
         message
     }
-    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+}
+impl crate::payload::Payload for GetHeaders{
+    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
         let mut size = 0;
         size += 4
             + CompactInt::size(self.block_header_hashes.len())

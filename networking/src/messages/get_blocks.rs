@@ -32,16 +32,6 @@ impl GetBlocks {
         message
     }
 
-    pub fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
-        let mut size = 0;
-        size += 4
-            + CompactInt::size(self.block_header_hashes.len())
-            + (self.block_header_hashes.len() * 32)
-            + 32; //protocol version, block header hashes, and stop_hash
-        let mut target = Vec::with_capacity(size);
-        self.serialize(&mut target)?;
-        Ok(target)
-    }
     // pub fn new(payload: Payload::GetBlocksPayload,config: &Config) -> GetBlocks {
     //     let mut message = GetBlocks {
     //         protocol_version: config.get_protocol_version(),
@@ -66,4 +56,17 @@ impl GetBlocks {
     //     //msg.create_header_for_body(Command::GetBlocks, config.magic());
     //     return message;
     //}
+}
+
+impl crate::payload::Payload for GetBlocks{
+    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+        let mut size = 0;
+        size += 4
+            + CompactInt::size(self.block_header_hashes.len())
+            + (self.block_header_hashes.len() * 32)
+            + 32; //protocol version, block header hashes, and stop_hash
+        let mut target = Vec::with_capacity(size);
+        self.serialize(&mut target)?;
+        Ok(target)
+    }
 }
