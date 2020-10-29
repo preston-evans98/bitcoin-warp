@@ -158,3 +158,4 @@ macro_rules! impl_deserializable_byte_array {
 }
 
 impl_deserializable_byte_array!(4);
+impl_deserializable_byte_array!(32);
