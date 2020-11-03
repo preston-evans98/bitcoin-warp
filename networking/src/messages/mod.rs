@@ -18,6 +18,15 @@ pub use get_data::InventoryType;
 mod addr;
 pub use addr::Addr;
 
+mod feefilter;
+pub use feefilter::FeeFilter;
+
+mod filteradd;
+pub use filteradd::FilterAdd;
+
+mod filterclear;
+pub use filterclear::FilterClear;
+
 mod block;
 pub use block::Block;
 
