@@ -1,7 +1,7 @@
 use crate::block_header::BlockHeader;
-use serde_derive::{Deserializable, Serializable};
-use shared::{u256, CompactInt, Serializable};
 use crate::transaction::Transaction;
+use serde_derive::{Deserializable, Serializable};
+use shared::{CompactInt, Serializable};
 #[derive(Deserializable, Serializable)]
 pub struct Block {
     block_header: BlockHeader,
@@ -17,7 +17,7 @@ impl Block {
         message
     }
 }
-impl crate::payload::Payload for Block{ 
+impl crate::payload::Payload for Block {
     fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
         let mut size = 0;
         size += BlockHeader::len();

@@ -1,5 +1,5 @@
 use crate::CompactInt;
-use byteorder::{LittleEndian, ReadBytesExt};
+use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use paste::paste;
 use std::error::Error;
 use std::net::SocketAddr;
@@ -129,14 +129,15 @@ where
     }
 }
 
+// TODO: test
 impl Deserializable for SocketAddr {
     fn deserialize<R>(target: &mut R) -> Result<SocketAddr>
     where
         R: std::io::Read,
     {
         Ok(SocketAddr::from((
-            <[u8; 4]>::deserialize(target)?,
-            <u16>::deserialize(target)?,
+            <[u8; 16]>::deserialize(target)?,
+            target.read_u16::<BigEndian>()?,
         )))
     }
 }
@@ -158,4 +159,5 @@ macro_rules! impl_deserializable_byte_array {
 }
 
 impl_deserializable_byte_array!(4);
+impl_deserializable_byte_array!(16);
 impl_deserializable_byte_array!(32);

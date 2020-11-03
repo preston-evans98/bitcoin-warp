@@ -20,6 +20,7 @@ pub enum PeerError {
     Io(std::io::Error),
     Deserialzation(DeserializationError),
     Message(String),
+    Malicious(String),
 }
 impl From<DeserializationError> for PeerError {
     fn from(kind: DeserializationError) -> PeerError {
@@ -49,6 +50,7 @@ impl fmt::Display for PeerError {
             PeerError::Deserialzation(cause) => cause.fmt(f),
             PeerError::Io(cause) => cause.fmt(f),
             PeerError::Message(cause) => cause.fmt(f),
+            PeerError::Malicious(cause) => cause.fmt(f),
         }
     }
 }
@@ -140,7 +142,13 @@ impl<'a> Peer<'a> {
             shared::Bytes::from(Vec::from(header_buf)).hex()
         );
         let header = Header::deserialize(&mut Cursor::new(header_buf), self.config.magic())?;
-
+        if header.get_payload_size() > self.config.get_max_msg_size() {
+            return Err(PeerError::Malicious(format!(
+                "Peer sent message of length {} (max allowed {}).",
+                header.get_payload_size(),
+                self.config.get_max_msg_size()
+            )));
+        }
         let mut payload = Vec::with_capacity(header.get_payload_size());
         payload.resize(header.get_payload_size(), 0);
         println!("Allocated {} bytes for payload.", payload.len());

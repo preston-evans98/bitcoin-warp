@@ -1,4 +1,4 @@
-use super::Transaction;
+use crate::transaction::Transaction;
 use crate::BlockHeader;
 use serde_derive::{Deserializable, Serializable};
 use shared::CompactInt;

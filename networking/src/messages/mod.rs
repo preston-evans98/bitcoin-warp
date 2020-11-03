@@ -15,6 +15,9 @@ pub use get_data::GetData;
 pub use get_data::InventoryData;
 pub use get_data::InventoryType;
 
+mod addr;
+pub use addr::Addr;
+
 mod block;
 pub use block::Block;
 

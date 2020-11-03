@@ -10,6 +10,11 @@ const WARP_PORT_MAINNET: usize = 8333;
 const WARP_PORT_TESTNET: usize = 18333;
 const WARP_PORT_REGTEST: usize = 18444;
 
+// Max message size: 4 Mb (see https://github.com/bitcoin/bitcoin/blob/master/src/net.h)
+const MAX_SIZE_MAINNET: usize = 4 * 1000 * 1000;
+const MAX_SIZE_TESTNET: usize = 4 * 1000 * 1000;
+const MAX_SIZE_REGTEST: usize = 4 * 1000 * 1000;
+
 #[derive(Debug)]
 pub struct Config {
     client_version: String,
@@ -26,6 +31,7 @@ pub struct NetworkConfig {
     core_port: usize,
     warp_port: usize,
     magic: u32,
+    max_msg_size: usize,
 }
 
 #[derive(Debug)]
@@ -41,6 +47,7 @@ impl NetworkConfig {
             core_port: CORE_PORT_MAINNET,
             warp_port: WARP_PORT_MAINNET,
             magic: MAGIC_MAINNET,
+            max_msg_size: MAX_SIZE_MAINNET,
         }
     }
     pub fn testnet() -> NetworkConfig {
@@ -48,6 +55,7 @@ impl NetworkConfig {
             core_port: CORE_PORT_TESTNET,
             warp_port: WARP_PORT_TESTNET,
             magic: MAGIC_TESTNET,
+            max_msg_size: MAX_SIZE_TESTNET,
         }
     }
     pub fn regtest() -> NetworkConfig {
@@ -55,6 +63,7 @@ impl NetworkConfig {
             core_port: CORE_PORT_REGTEST,
             warp_port: WARP_PORT_REGTEST,
             magic: MAGIC_REGTEST,
+            max_msg_size: MAX_SIZE_REGTEST,
         }
     }
 }
@@ -94,5 +103,8 @@ impl Config {
     }
     pub fn get_services(&self) -> u64 {
         self.services
+    }
+    pub fn get_max_msg_size(&self) -> usize {
+        self.network_config.max_msg_size
     }
 }

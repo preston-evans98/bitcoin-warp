@@ -1,5 +1,5 @@
 use serde_derive::{Deserializable, Serializable};
-use shared::{u256, CompactInt, Serializable};
+use shared::{u256, CompactInt};
 #[derive(Deserializable, Serializable)]
 pub struct Transaction {
     version: i32,
