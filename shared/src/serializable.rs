@@ -34,14 +34,14 @@ macro_rules! impl_ser_primitive {
 
 impl_ser_primitive!(u16, u32, u64, i32, i64);
 
-impl Serializable for u8 {
-    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
-    where
-        W: std::io::Write,
-    {
-        target.write_all(&[*self])
-    }
-}
+// impl Serializable for u8 {
+//     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+//     where
+//         W: std::io::Write,
+//     {
+//         target.write_all(&[*self])
+//     }
+// }
 // impl Serializable for u16 {
 //     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
 //     where
@@ -137,6 +137,20 @@ impl Serializable for [u8; 32] {
         W: std::io::Write,
     {
         target.write_all(self)
+    }
+}
+
+trait U8Marker {}
+impl U8Marker for u8 {}
+
+impl Serializable for Vec<u8> {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        CompactInt::from(self.len()).serialize(target)?;
+        target.write_all(self)?;
+        Ok(())
     }
 }
 
