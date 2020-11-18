@@ -5,6 +5,7 @@ use std::error::Error;
 use std::net::SocketAddr;
 use std::{fmt, io};
 
+
 #[derive(Debug)]
 pub enum DeserializationError {
     Io(io::Error),
@@ -124,6 +125,20 @@ where
         let mut result: Vec<T> = Vec::with_capacity(len);
         for _ in 0..len {
             result.push(T::deserialize(target)?);
+        }
+        Ok(result)
+    }
+}
+
+impl Deserializable for String{
+    fn deserialize<R>(target: &mut R) -> Result<String>
+    where
+        R: std::io::Read,
+    {
+        let len = CompactInt::deserialize(target)?.value() as usize;
+        let mut result= String::with_capacity(len);
+        for _ in 0..len {
+            result.push(target.read_u8()? as char);
         }
         Ok(result)
     }

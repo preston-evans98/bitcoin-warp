@@ -155,3 +155,13 @@ where
         Ok(())
     }
 }
+impl Serializable for String{
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        CompactInt::from(self.len()).serialize(target)?;
+        self.as_bytes().serialize(target)?;
+        Ok(())
+    }
+}
