@@ -1,4 +1,5 @@
 use crate::block_header::BlockHeader;
+use byteorder::WriteBytesExt;
 use shared::{CompactInt, Deserializable, DeserializationError, Serializable};
 pub struct Headers {
     headers: Vec<BlockHeader>,
@@ -12,7 +13,7 @@ impl Serializable for Headers {
         CompactInt::from(self.headers.len()).serialize(target)?;
         for item in self.headers.iter() {
             item.serialize(target)?;
-            0u8.serialize(target)?;
+            target.write_u8(0)?;
         }
         Ok(())
     }

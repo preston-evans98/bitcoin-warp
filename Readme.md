@@ -30,9 +30,9 @@ This means that if we do our job, Bitcoin Warp can be just as fast as a C/C++ Bi
 Implementation of Bitcoin Warp is split into several phases with accompanying milestones. 
 
 ## Pre-Alpha
-### 1. Basic Networking (In Progress)
+### 1. Basic Networking (Feature Complete - in QA)
 Implement the Bitcoin wire protocol. Allows messages to be exchanged with nodes running Bitcoin Core to allow fetching blocks etc. during development. Does not include peer management, mempool, etc. 
-### 2. Basic Validation
+### 2. Basic Validation (Implementation In Progress)
 Implement the basic logic to validate blocks and transactions. This includes things like checking signatures and block hashes. Partially dependent on 3. This implementation will be unoptimized, and may not include changes introduced into Bitcoin via soft fork. These changes will be added in the next Phase. 
 ### 3. Basic Database
 Implement a minimum viable database layer to store blocks and UTXOs. Likely LevelDB initially. 
