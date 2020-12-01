@@ -14,7 +14,7 @@ shared = { path = "shared" }
 warp-crypto = { path = "crypto" }
 serde_derive = { path = "serde_derive" }
 hex = "0.4.2"
-tokio = { version = "0.2.22", features = ["full"] }
+tokio = { version = "0.3.4", features = ["full"] }
 
 [[bin]]
 name = "main"
