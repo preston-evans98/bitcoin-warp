@@ -17,3 +17,15 @@ impl crate::Payload for SendCompact {
         Ok(out)
     }
 }
+
+#[test]
+fn serial_size() {
+    use crate::Payload;
+    let msg = SendCompact {
+        announce: true,
+        version: 32381,
+    };
+    let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+    assert_eq!(serial.len(), msg.serialized_size());
+    assert_eq!(serial.len(), serial.capacity())
+}

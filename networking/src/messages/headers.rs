@@ -44,3 +44,32 @@ impl crate::payload::Payload for Headers {
         Ok(result)
     }
 }
+
+#[test]
+fn serial_size() {
+    use crate::payload::Payload;
+
+    let h1 = BlockHeader::new(
+        23,
+        shared::u256::from(12345678),
+        shared::u256::from(9876543),
+        2342,
+        crate::block_header::Nbits::new(shared::u256::from(8719)),
+        99,
+    );
+    let h2 = BlockHeader::new(
+        0,
+        shared::u256::from(2),
+        shared::u256::from(88),
+        2198321,
+        crate::block_header::Nbits::new(shared::u256::from(0xf32231)),
+        82,
+    );
+
+    let headers = Vec::from([h1, h2]);
+
+    let msg = Headers { headers };
+    let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+    assert_eq!(serial.len(), msg.serialized_size());
+    assert_eq!(serial.len(), serial.capacity())
+}

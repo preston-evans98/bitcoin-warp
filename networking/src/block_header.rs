@@ -16,6 +16,23 @@ impl BlockHeader {
     pub fn len() -> usize {
         80
     }
+    pub fn new(
+        version: u32,
+        prev_hash: u256,
+        merkle_root: u256,
+        time: u32,
+        target: Nbits,
+        nonce: u32,
+    ) -> BlockHeader {
+        BlockHeader {
+            version,
+            prev_hash,
+            merkle_root,
+            time,
+            target,
+            nonce,
+        }
+    }
 }
 
 pub struct Nbits {

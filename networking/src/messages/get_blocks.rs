@@ -71,3 +71,20 @@ impl crate::payload::Payload for GetBlocks {
         Ok(target)
     }
 }
+
+#[test]
+fn serial_size() {
+    use crate::payload::Payload;
+    use shared::u256;
+    let int1 = u256::from(567892322);
+    let int2 = u256::from(7892322);
+    let int3 = u256::from(1);
+    let msg = GetBlocks {
+        protocol_version: 32371,
+        block_header_hashes: Vec::from([int1, int2, int3]),
+        stop_hash: u256::new(),
+    };
+    let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+    assert_eq!(serial.len(), msg.serialized_size());
+    assert_eq!(serial.len(), serial.capacity())
+}

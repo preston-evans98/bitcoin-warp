@@ -40,6 +40,13 @@ impl TxInput {
             + self.signature_script.len()
             + 4
     }
+    pub fn new(previous_outpoint: TxOutpoint, signature_script: Vec<u8>, sequence: u32) -> TxInput {
+        TxInput {
+            previous_outpoint,
+            signature_script,
+            sequence,
+        }
+    }
 }
 #[derive(Deserializable, Serializable)]
 pub struct TxOutput {
@@ -50,6 +57,9 @@ impl TxOutput {
     pub fn len(&self) -> usize {
         8 + CompactInt::size(self.pk_script.len()) + self.pk_script.len()
     }
+    pub fn new(value: i64, pk_script: Vec<u8>) -> TxOutput {
+        TxOutput { value, pk_script }
+    }
 }
 #[derive(Deserializable, Serializable)]
 pub struct TxOutpoint {
@@ -59,6 +69,9 @@ pub struct TxOutpoint {
 impl TxOutpoint {
     pub fn len(&self) -> usize {
         32 + 4
+    }
+    pub fn new(hash: u256, index: u32) -> TxOutpoint {
+        TxOutpoint { hash, index }
     }
 }
 

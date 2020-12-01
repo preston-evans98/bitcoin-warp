@@ -25,3 +25,29 @@ impl crate::payload::Payload for MerkleBlock {
         Ok(target)
     }
 }
+
+#[test]
+fn serial_size() {
+    use crate::payload::Payload;
+    let int1 = u256::from(567892322);
+    let int2 = u256::from(7892322);
+    let int3 = u256::from(1);
+    let block_header = BlockHeader::new(
+        23,
+        shared::u256::from(12345678),
+        shared::u256::from(9876543),
+        2342,
+        crate::block_header::Nbits::new(shared::u256::from(8719)),
+        99,
+    );
+
+    let msg = MerkleBlock {
+        block_header,
+        transaction_count: 113,
+        hashes: vec![int1, int2, int3],
+        flags: Vec::from([232u8, 11]),
+    };
+    let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+    assert_eq!(serial.len(), msg.serialized_size());
+    assert_eq!(serial.len(), serial.capacity())
+}

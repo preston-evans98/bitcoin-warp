@@ -2,6 +2,7 @@ use serde_derive::Deserializable;
 use shared::CompactInt;
 use shared::Serializable;
 #[derive(Deserializable)]
+#[allow(non_snake_case)]
 pub struct FilterLoad {
     filter: Vec<u8>,
     nHashFuncs: u32,
@@ -30,4 +31,18 @@ impl crate::Payload for FilterLoad {
         self.serialize(&mut result)?;
         Ok(result)
     }
+}
+
+#[test]
+fn serial_size() {
+    use crate::payload::Payload;
+    let msg = FilterLoad {
+        filter: Vec::from([23u8; 22]),
+        nHashFuncs: 0x129381,
+        nTweak: 0xf2391381,
+        nFlags: 32,
+    };
+    let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+    assert_eq!(serial.len(), msg.serialized_size());
+    assert_eq!(serial.len(), serial.capacity())
 }

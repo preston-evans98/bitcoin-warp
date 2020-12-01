@@ -15,3 +15,12 @@ impl crate::Payload for Ping {
         Ok(result)
     }
 }
+
+#[test]
+fn serial_size() {
+    use crate::Payload;
+    let msg = Ping { nonce: 34567 };
+    let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+    assert_eq!(serial.len(), msg.serialized_size());
+    assert_eq!(serial.len(), serial.capacity())
+}

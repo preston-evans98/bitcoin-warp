@@ -43,7 +43,6 @@ impl Command {
             Command::CmpctBlock => b"cmpctblock\0\0",
             Command::Headers => b"headers\0\0\0\0\0",
             Command::Inv => b"inv\0\0\0\0\0\0\0\0\0",
-            Command::BlockTxn => b"blocktxn\0\0\0\0",
             Command::MemPool => b"mempool\0\0\0\0\0",
             Command::MerkleBlock => b"merkleblock\0",
             Command::SendCmpct => b"sendcmpct\0\0\0",

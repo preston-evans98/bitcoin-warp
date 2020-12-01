@@ -18,3 +18,14 @@ impl Payload for FilterAdd {
         Ok(result)
     }
 }
+
+#[test]
+fn serial_size() {
+    let inner1 = Vec::from([1u8; 32]);
+    let inner2 = Vec::from([7u8; 11]);
+    let outer = Vec::from([inner1, inner2]);
+    let msg = FilterAdd { elements: outer };
+    let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+    assert_eq!(serial.len(), msg.serialized_size());
+    assert_eq!(serial.len(), serial.capacity())
+}
