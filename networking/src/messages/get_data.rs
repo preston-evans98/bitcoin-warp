@@ -84,15 +84,17 @@ impl GetData {
         //message.create_header_for_body(Command::GetData, config.magic());
         message
     }
-    
 }
-impl crate::payload::Payload for GetData{
-    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
-        let mut size = 0;
+impl crate::payload::Payload for GetData {
+    fn serialized_size(&self) -> usize {
+        let mut size = CompactInt::size(self.inventory.len());
         for inv in self.inventory.iter() {
             size += inv.len();
         }
-        let mut target = Vec::with_capacity(size + CompactInt::size(self.inventory.len()));
+        size
+    }
+    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+        let mut target = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut target)?;
         Ok(target)
     }

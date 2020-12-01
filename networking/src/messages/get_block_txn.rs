@@ -9,12 +9,15 @@ pub struct GetBlockTxn {
 }
 
 impl crate::Payload for GetBlockTxn {
-    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+    fn serialized_size(&self) -> usize {
         let mut len = 32;
         for index in self.indexes.iter() {
             len += CompactInt::size(index.value() as usize);
         }
-        let mut out = Vec::with_capacity(len);
+        len
+    }
+    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+        let mut out = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut out)?;
         Ok(out)
     }

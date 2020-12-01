@@ -44,9 +44,11 @@ impl Version {
 }
 
 impl crate::payload::Payload for Version {
+    fn serialized_size(&self) -> usize {
+        85 + CompactInt::size(self.user_agent.len()) + self.user_agent.len()
+    }
     fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
-        let size = 85 + CompactInt::size(self.user_agent.len()) + self.user_agent.len();
-        let mut target = Vec::with_capacity(size);
+        let mut target = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut target)?;
         Ok(target)
     }

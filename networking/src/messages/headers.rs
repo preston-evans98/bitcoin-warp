@@ -35,10 +35,11 @@ impl Deserializable for Headers {
 }
 
 impl crate::payload::Payload for Headers {
+    fn serialized_size(&self) -> usize {
+        self.headers.len() * (BlockHeader::len() + 1) + CompactInt::size(self.headers.len())
+    }
     fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
-        let len =
-            self.headers.len() * (BlockHeader::len() + 1) + CompactInt::size(self.headers.len());
-        let mut result = Vec::with_capacity(len);
+        let mut result = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut result)?;
         Ok(result)
     }

@@ -6,8 +6,11 @@ pub struct Ping {
 }
 
 impl crate::Payload for Ping {
+    fn serialized_size(&self) -> usize {
+        8
+    }
     fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
-        let mut result = Vec::with_capacity(8);
+        let mut result = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut result)?;
         Ok(result)
     }

@@ -26,7 +26,7 @@ impl PrefilledTransaction {
 }
 
 impl crate::Payload for CompactBlock {
-    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+    fn serialized_size(&self) -> usize {
         let mut len = BlockHeader::len()
             + 8
             + CompactInt::size(self.short_ids.len())
@@ -35,7 +35,10 @@ impl crate::Payload for CompactBlock {
         for txn in self.prefilled_txns.iter() {
             len += txn.len();
         }
-        let mut result = Vec::with_capacity(len);
+        len
+    }
+    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+        let mut result = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut result)?;
         Ok(result)
     }

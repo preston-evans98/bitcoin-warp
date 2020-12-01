@@ -1,6 +1,6 @@
 use crate::block_header::BlockHeader;
 use serde_derive::{Deserializable, Serializable};
-use shared::{CompactInt, Serializable};
+use shared::{u256, CompactInt, Serializable};
 #[derive(Deserializable, Serializable)]
 pub struct MerkleBlock {
     block_header: BlockHeader,
@@ -10,16 +10,17 @@ pub struct MerkleBlock {
     //flagByteCount
     flags: Vec<u8>,
 }
-impl crate::payload::Payload {
+impl crate::payload::Payload for MerkleBlock {
+    fn serialized_size(&self) -> usize {
+        BlockHeader::len()
+        + 4
+        + CompactInt::size(self.hashes.len())
+        + (self.hashes.len() * 32) //32 bytes for each "hash" as they are u256
+        + CompactInt::size(self.flags.len())
+        + self.flags.len()
+    }
     fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
-        let mut size = 0;
-        size += BlockHeader::len()
-            + 4
-            + CompactInt::size(self.hashes.len())
-            + (self.hashes.len() * 32) //32 bytes for each "hash" as they are u256
-            + CompactInt::size(self.flags.len())
-            + self.flags.len();
-        let mut target = Vec::with_capacity(size);
+        let mut target = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut target)?;
         Ok(target)
     }

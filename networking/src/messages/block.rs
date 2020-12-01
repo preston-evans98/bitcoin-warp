@@ -18,13 +18,16 @@ impl Block {
     }
 }
 impl crate::payload::Payload for Block {
-    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
-        let mut size = 0;
+    fn serialized_size(&self) -> usize {
+        let mut size = CompactInt::size(self.transactions.len());
         size += BlockHeader::len();
         for transaction in self.transactions.iter() {
             size += transaction.len();
         }
-        let mut target = Vec::with_capacity(size + CompactInt::size(self.transactions.len()));
+        size
+    }
+    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+        let mut target = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut target)?;
         Ok(target)
     }

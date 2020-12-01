@@ -58,14 +58,15 @@ impl GetBlocks {
     //}
 }
 
-impl crate::payload::Payload for GetBlocks{
-    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
-        let mut size = 0;
-        size += 4
-            + CompactInt::size(self.block_header_hashes.len())
+impl crate::payload::Payload for GetBlocks {
+    fn serialized_size(&self) -> usize {
+        //protocol version, block header hashes, and stop_hash
+        4 + CompactInt::size(self.block_header_hashes.len())
             + (self.block_header_hashes.len() * 32)
-            + 32; //protocol version, block header hashes, and stop_hash
-        let mut target = Vec::with_capacity(size);
+            + 32
+    }
+    fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+        let mut target = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut target)?;
         Ok(target)
     }

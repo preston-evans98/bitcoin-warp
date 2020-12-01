@@ -5,7 +5,7 @@ mod message;
 pub use message::Message;
 
 mod peer;
-pub use peer::Peer;
+pub use peer::{Peer, PeerError};
 
 mod payload;
 pub use payload::Payload;
@@ -16,17 +16,35 @@ mod block_header;
 pub use block_header::{BlockHeader, Nbits};
 
 mod transaction;
-pub use transaction::{Transaction, TxInput,TxOutput,TxOutpoint, CoinbaseInput};
+pub use transaction::{CoinbaseInput, Transaction, TxInput, TxOutpoint, TxOutput};
 
 mod messages;
+pub use messages::Addr;
 pub use messages::Block;
+pub use messages::BlockTxn;
+pub use messages::CompactBlock;
+pub use messages::FeeFilter;
+pub use messages::FilterAdd;
+pub use messages::FilterClear;
+pub use messages::FilterLoad;
+pub use messages::GetAddr;
+pub use messages::GetBlockTxn;
 pub use messages::GetBlocks;
 pub use messages::GetData;
 pub use messages::GetHeaders;
-pub use messages::InventoryData;
-pub use messages::InventoryType;
+pub use messages::Headers;
+pub use messages::Mempool;
+pub use messages::MerkleBlock;
+pub use messages::NotFound;
+pub use messages::Ping;
+pub use messages::Pong;
+pub use messages::Reject;
+pub use messages::SendCompact;
+pub use messages::SendHeaders;
+pub use messages::Tx;
 pub use messages::Verack;
 pub use messages::Version;
+pub use messages::{Inv, InventoryData, InventoryType};
 
 #[cfg(test)]
 mod tests {

@@ -1,25 +1,25 @@
 use crate::transaction::Transaction;
+use crate::transaction::{TxInput, TxOutput};
 use serde_derive::{Deserializable, Serializable};
-use shared::{CompactInt, Serializable};
+use shared::Serializable;
 
 #[derive(Serializable, Deserializable)]
-pub struct Tx{
-    transaction: Transaction
+pub struct Tx {
+    transaction: Transaction,
 }
-impl Tx{
-    pub fn new(magic: i32, ins: Vec<TxInputs>, outs: Vec<TxOutputs>) -> Tx{
-        Transaction{
-            version: magic,
-            inputs: ins,
-            outputs: outs,
+impl Tx {
+    pub fn new(magic: i32, ins: Vec<TxInput>, outs: Vec<TxOutput>) -> Tx {
+        Tx {
+            transaction: Transaction::new(magic, ins, outs),
         }
     }
 }
-impl crate::payload::Payload for Tx{
+impl crate::payload::Payload for Tx {
+    fn serialized_size(&self) -> usize {
+        self.transaction.len()
+    }
     fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
-        let mut size = 0;
-        size += self.transaction.len();
-        let mut target = Vec::with_capacity(size);
+        let mut target = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut target)?;
         Ok(target)
     }

@@ -19,6 +19,13 @@ impl Transaction {
         }
         size
     }
+    pub fn new(version: i32, inputs: Vec<TxInput>, outputs: Vec<TxOutput>) -> Transaction {
+        Transaction {
+            version,
+            inputs,
+            outputs,
+        }
+    }
 }
 #[derive(Deserializable, Serializable)]
 pub struct TxInput {

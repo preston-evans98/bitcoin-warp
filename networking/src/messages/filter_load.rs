@@ -22,9 +22,11 @@ impl Serializable for FilterLoad {
     }
 }
 impl crate::Payload for FilterLoad {
+    fn serialized_size(&self) -> usize {
+        CompactInt::size(self.filter.len()) + self.filter.len() + 4 + 4 + 1
+    }
     fn to_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
-        let size = CompactInt::size(self.filter.len()) + self.filter.len() + 9;
-        let mut result = Vec::with_capacity(size);
+        let mut result = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut result)?;
         Ok(result)
     }
