@@ -57,7 +57,7 @@ Optimize the database. Explore alternatives to LevelDB, including potentially de
 Electron + Typescript = Better UX. 
 
 ### SOTA Networking
-Explore using libP2p, or implementing a new networking protocol based on more recent academic literature. This might be unnecessary. It might also be fun. 
+Explore using libP2p, or implementing a new networking protocol based on more recent academic literature. This might be unnecessary. It might also be fun. In any case, we definitely need an authenticated messaging protocol.
 
 ...
 
