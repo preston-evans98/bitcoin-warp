@@ -1,7 +1,7 @@
 use crate::transaction::Transaction;
 use serde_derive::{Deserializable, Serializable};
 use shared::Serializable;
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct BlockTxn {
     block_hash: [u8; 32],
     txs: Vec<Transaction>,

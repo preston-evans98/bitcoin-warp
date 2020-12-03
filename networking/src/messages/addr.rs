@@ -3,12 +3,12 @@ use shared::CompactInt;
 use shared::Serializable;
 use std::net::SocketAddr;
 
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct Addr {
     addrs: Vec<EncapsulatedAddr>,
 }
 
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct EncapsulatedAddr {
     time: u32,
     services: u64,

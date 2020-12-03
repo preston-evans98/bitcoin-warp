@@ -2,7 +2,7 @@ use serde_derive::{Deserializable, Serializable};
 use shared::CompactInt;
 use shared::Serializable;
 
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct GetBlockTxn {
     block_hash: [u8; 32],
     indexes: Vec<CompactInt>,

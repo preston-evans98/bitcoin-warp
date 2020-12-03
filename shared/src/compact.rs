@@ -1,6 +1,7 @@
 use crate::{Deserializable, DeserializationError, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
+#[derive(Debug)]
 pub struct CompactInt(u64);
 
 impl CompactInt {

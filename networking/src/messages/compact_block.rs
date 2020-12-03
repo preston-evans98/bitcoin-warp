@@ -4,7 +4,7 @@ use serde_derive::{Deserializable, Serializable};
 use shared::CompactInt;
 use shared::Serializable;
 
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct CompactBlock {
     header: BlockHeader,
     nonce: u64,
@@ -12,7 +12,7 @@ pub struct CompactBlock {
     prefilled_txns: Vec<PrefilledTransaction>,
 }
 
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct PrefilledTransaction {
     index: CompactInt,
     tx: Transaction,

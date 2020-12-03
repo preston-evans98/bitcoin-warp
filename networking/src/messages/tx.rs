@@ -3,7 +3,7 @@ use crate::transaction::{TxInput, TxOutput};
 use serde_derive::{Deserializable, Serializable};
 use shared::Serializable;
 
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct Tx {
     transaction: Transaction,
 }

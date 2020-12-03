@@ -3,7 +3,7 @@ use log::warn;
 use serde_derive::{Deserializable, Serializable};
 use shared::{u256, CompactInt, Serializable};
 
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct GetHeaders {
     protocol_version: u32,
     block_header_hashes: Vec<u256>,

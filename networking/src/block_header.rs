@@ -1,7 +1,7 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde_derive::{Deserializable, Serializable};
 use shared::u256;
-#[derive(Deserializable, Serializable)]
+#[derive(Deserializable, Serializable, Debug)]
 pub struct BlockHeader {
     version: u32,
     prev_hash: u256,
@@ -35,6 +35,7 @@ impl BlockHeader {
     }
 }
 
+#[derive(Debug)]
 pub struct Nbits {
     target: u256,
 }

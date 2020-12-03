@@ -1,7 +1,7 @@
 use crate::Payload;
 use serde_derive::{Deserializable, Serializable};
 use shared::{CompactInt, Serializable};
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct FilterAdd {
     elements: Vec<Vec<u8>>,
 }

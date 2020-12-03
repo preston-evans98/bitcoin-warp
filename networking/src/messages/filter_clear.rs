@@ -1,3 +1,5 @@
+use serde_derive::{Deserializable, Serializable};
+#[derive(Serializable, Deserializable, Debug)]
 pub struct FilterClear {}
 
 impl crate::payload::Payload for FilterClear {

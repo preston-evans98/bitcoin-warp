@@ -2,11 +2,11 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use config::Config;
 use serde_derive::{Deserializable, Serializable};
 use shared::{u256, CompactInt, Serializable};
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct GetData {
     inventory: Vec<InventoryData>,
 }
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum InventoryType {
     Tx = 1,
     Block = 2,
@@ -51,7 +51,7 @@ impl shared::Deserializable for InventoryType {
         }
     }
 }
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct InventoryData {
     pub inventory_type: InventoryType,
     pub hash: u256,

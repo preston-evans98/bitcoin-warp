@@ -1,7 +1,7 @@
 use crate::block_header::BlockHeader;
 use serde_derive::{Deserializable, Serializable};
 use shared::{u256, CompactInt, Serializable};
-#[derive(Deserializable, Serializable)]
+#[derive(Deserializable, Serializable, Debug)]
 pub struct MerkleBlock {
     block_header: BlockHeader,
     transaction_count: u32,

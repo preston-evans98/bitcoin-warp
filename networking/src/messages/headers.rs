@@ -1,6 +1,7 @@
 use crate::block_header::BlockHeader;
 use byteorder::WriteBytesExt;
 use shared::{CompactInt, Deserializable, DeserializationError, Serializable};
+#[derive(Debug)]
 pub struct Headers {
     headers: Vec<BlockHeader>,
 }

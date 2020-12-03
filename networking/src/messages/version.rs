@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::{net::SocketAddr, rc::Rc};
 
 type Services = u64;
-#[derive(Deserializable, Serializable)]
+#[derive(Deserializable, Serializable, Debug)]
 pub struct Version {
     protocol_version: u32,
     services: Services,
