@@ -3,12 +3,12 @@ A Rust implementation of Bitcoin.
 
 
 ## Why Another Bitcoin Implementation?
-There are at least seven separate implentations of the Bitcoin protocol. Why do we need another one?
+There are at least seven separate implementations of the Bitcoin protocol. Why do we need another one?
 
 ### 1. Bitcoin Core has about 98% Market Share
 Core has earned its place at the top. It's battle-tested, actively maintained, and blazing fast. But too much concentration isn't a good thing. 
 1. **It places an undue burden on the core devs.** Since a bug in Core could effectively bring down the entire Bitcoin network, the devs have to be perfect. They've done remarkably well so far, but its unreasonable to expect that they'll keep it up forever. 
-1. **It slows innovation.** In Ethereum, both Geth and Parity (and now Nethermind) can try out new features. If a feature doesn't work out and part of the network crashes, it's bad but not catastrophic. Bitcoin Core doesn't have that luxury. They need to maintain 100% uptime, or Bitcoin dies. In addition, potential contributors need to be advanced C++ programmers willing to dive into a highly complex codebase. Obviously, this somewhat limits the pool of contributors (although the core devs have done a fantastic job at encouraging contributions).
+1. **It slows innovation.** In Ethereum, both Geth and Parity (and now Nethermind) can try out new features. If a feature doesn't work out and part of the network crashes, it's bad but not catastrophic. Bitcoin Core doesn't have that luxury. They need to maintain 100% uptime, or Bitcoin dies. In addition, potential contributors need to be advanced C++ programmers willing to dive into a highly complex codebase. Obviously, this somewhat limits the pool of contributors.
 1. **It leaves us vulnerable to supply chain attacks**. As Bitcoin grows to trillion dollar market cap and beyond, it may very well be targeted by national intelligence services. Expect to see a variety of attacks on Bitcoin Core's supply chain - from tampering with dev machines to stealing release keys. Heck, someone might even try to mess with C++ compilers. In any case, *Vires in Numeris.*
 
 ### 2. There is no Viable Alternative Client
@@ -57,7 +57,7 @@ Optimize the database. Explore alternatives to LevelDB, including potentially de
 Electron + Typescript = Better UX. 
 
 ### SOTA Networking
-Explore using libP2p, or implementing a new networking protocol based on more recent academic literature. This might be unnecessary. It might also be fun. 
+Explore using libP2p, or implementing a new networking protocol based on more recent academic literature. This might be unnecessary. It might also be fun. In any case, we definitely need an authenticated messaging protocol.
 
 ...
 
