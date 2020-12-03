@@ -23,4 +23,9 @@ path = "daemon/src/bin/main.rs"
 [workspace]
 members = [
     "networking",
+    "daemon",
+    "shared", 
+    "config", 
+    "crypto", 
+    "serde_derive",
 ]

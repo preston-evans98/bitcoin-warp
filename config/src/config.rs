@@ -15,6 +15,10 @@ const MAX_SIZE_MAINNET: usize = 4 * 1000 * 1000;
 const MAX_SIZE_TESTNET: usize = 4 * 1000 * 1000;
 const MAX_SIZE_REGTEST: usize = 4 * 1000 * 1000;
 
+const MAX_PEERS_MAINNET: usize = 10;
+const MAX_PEERS_TESTNET: usize = 10;
+const MAX_PEERS_REGTEST: usize = 10;
+
 #[derive(Debug)]
 pub struct Config {
     client_version: String,
@@ -32,6 +36,8 @@ pub struct NetworkConfig {
     warp_port: usize,
     magic: u32,
     max_msg_size: usize,
+    max_peers: usize,
+    max_warp_peers: usize,
 }
 
 #[derive(Debug)]
@@ -48,6 +54,8 @@ impl NetworkConfig {
             warp_port: WARP_PORT_MAINNET,
             magic: MAGIC_MAINNET,
             max_msg_size: MAX_SIZE_MAINNET,
+            max_peers: MAX_PEERS_MAINNET,
+            max_warp_peers: MAX_PEERS_MAINNET,
         }
     }
     pub fn testnet() -> NetworkConfig {
@@ -56,6 +64,8 @@ impl NetworkConfig {
             warp_port: WARP_PORT_TESTNET,
             magic: MAGIC_TESTNET,
             max_msg_size: MAX_SIZE_TESTNET,
+            max_peers: MAX_PEERS_TESTNET,
+            max_warp_peers: MAX_PEERS_TESTNET,
         }
     }
     pub fn regtest() -> NetworkConfig {
@@ -64,6 +74,8 @@ impl NetworkConfig {
             warp_port: WARP_PORT_REGTEST,
             magic: MAGIC_REGTEST,
             max_msg_size: MAX_SIZE_REGTEST,
+            max_peers: MAX_PEERS_REGTEST,
+            max_warp_peers: MAX_PEERS_REGTEST,
         }
     }
 }
@@ -106,5 +118,14 @@ impl Config {
     }
     pub fn get_max_msg_size(&self) -> usize {
         self.network_config.max_msg_size
+    }
+    pub fn max_core_peers(&self) -> usize {
+        self.network_config.max_peers - self.network_config.max_warp_peers
+    }
+    pub fn max_warp_peers(&self) -> usize {
+        self.network_config.max_warp_peers
+    }
+    pub fn max_peers(&self) -> usize {
+        self.network_config.max_peers
     }
 }

@@ -1,10 +1,7 @@
 extern crate hex;
 extern crate serde_derive;
-use config::Config;
-use daemon::Daemon;
-use networking::{Command, Peer};
+use daemon::run_shell;
 use serde_derive::{Deserializable, Serializable};
-use std::net::SocketAddr;
 
 #[derive(Serializable, Deserializable, Debug)]
 pub struct MyTestStruct {
@@ -19,25 +16,55 @@ pub struct MyTestStruct {
 //     println!("{:?}", test);
 // }
 
+// async fn sleeper() -> Result<(), std::io::Error> {
+//     println!("1 Started");
+//     sleep(Duration::from_secs(3)).await;
+//     // tokio::time::sleep(tokio::time::Duration::from_secs(3));
+//     println!("1 Done");
+//     Ok(())
+// }
+
+// async fn sleeper2() -> Result<(), std::io::Error> {
+//     println!("2 Started");
+//     sleep(Duration::from_secs(3)).await;
+//     // tokio::time::sleep(tokio::time::Duration::from_secs(3));
+//     println!("2 Done");
+//     Ok(())
+// }
+
+// async fn mini_main() {
+//     // println!("Main started!");
+//     // let handle = tokio::spawn(sleeper());
+//     // let handle2 = tokio::spawn(async {
+//     //     sleep(Duration::from_secs(1)).await;
+//     //     sleeper2().await
+//     // });
+//     // sleep(Duration::from_secs(5)).await;
+//     // println!("Main done!");
+//     // tokio::join!(handle, handle2);
+// }
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // test();
-    let daemon = Daemon::new();
-    // println!("{:?}", daemon);
+    run_shell().await?;
+    // // test();
 
-    let command = Command::Version;
-    let config = Config::mainnet();
-    // let addr = SocketAddr::from(([192, 168, 1, 2], 8333));
-    let addr = SocketAddr::from(([192, 168, 1, 8], 8333));
-    let mut raspi = Peer::at_address(1, addr, &config).await.unwrap();
+    // // println!("{:?}", daemon);
 
-    // let mut peer2 = Peer::at_address(1, addr2, &config).await.unwrap();
-    let result = raspi.perform_handshake(None).await;
-    println!("{:?}", result);
+    // let command = Command::Version;
+    // let config = Config::mainnet();
+    // // let addr = SocketAddr::from(([192, 168, 1, 2], 8333));
+    // let addr = SocketAddr::from(([192, 168, 1, 8], 8333));
+    // let mut raspi = Peer::at_address(1, addr, &config).await.unwrap();
+
+    // // let mut peer2 = Peer::at_address(1, addr2, &config).await.unwrap();
+    // let result = raspi.perform_handshake(None).await;
+    // println!("{:?}", result);
     // raspi.send(command).await;
     // execute_command(command, daemon);
     Ok(())
 }
+
 // fn execute_command(command: Command, daemon: Daemon) {
 //     match command {
 //         Command::Version => {

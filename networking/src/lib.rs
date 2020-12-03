@@ -74,7 +74,7 @@ mod tests {
             01 as u64,
             local_address,
             0 as u32,
-            &Config::mainnet(),
+            &std::rc::Rc::new(Config::mainnet()),
         );
         let mut target = Vec::new();
         version.serialize(&mut target).unwrap();

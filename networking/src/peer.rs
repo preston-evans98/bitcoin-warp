@@ -4,10 +4,10 @@ use crate::messages::{InventoryData, Verack, Version};
 use crate::payload::Payload;
 use config::Config;
 use shared::{u256, DeserializationError};
-use std::fmt;
 use std::io::Cursor;
 use std::net::SocketAddr;
 use std::time::Duration;
+use std::{fmt, rc::Rc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
@@ -27,8 +27,8 @@ impl From<DeserializationError> for PeerError {
         PeerError::Deserialzation(kind)
     }
 }
-impl From<tokio::time::Elapsed> for PeerError {
-    fn from(kind: tokio::time::Elapsed) -> PeerError {
+impl From<tokio::time::error::Elapsed> for PeerError {
+    fn from(kind: tokio::time::error::Elapsed) -> PeerError {
         PeerError::Timeout(kind.to_string())
     }
 }
@@ -55,7 +55,8 @@ impl fmt::Display for PeerError {
     }
 }
 
-pub struct Peer<'a> {
+#[derive(Debug)]
+pub struct Peer {
     peer_id: usize,
     ip_address: SocketAddr,
     nonce: u64,
@@ -63,15 +64,11 @@ pub struct Peer<'a> {
     daemon_protocol_version: u32,
     services: u64,
     connection: TcpStream,
-    config: &'a Config,
+    config: Rc<Config>,
 }
 
-impl<'a> Peer<'a> {
-    pub async fn at_address(
-        id: usize,
-        address: SocketAddr,
-        config: &'a Config,
-    ) -> Result<Peer<'a>> {
+impl Peer {
+    pub async fn at_address(id: usize, address: SocketAddr, config: Rc<Config>) -> Result<Peer> {
         let connection = timeout(Duration::from_secs(5), TcpStream::connect(address)).await??;
         Ok(Peer {
             peer_id: id,
@@ -84,7 +81,7 @@ impl<'a> Peer<'a> {
             config,
         })
     }
-    pub async fn from_connection(id: usize, connection: TcpStream, config: &'a Config) -> Peer<'a> {
+    pub async fn from_connection(id: usize, connection: TcpStream, config: Rc<Config>) -> Peer {
         println!("Receiving from {:?}", connection.peer_addr());
         Peer {
             peer_id: id,
