@@ -65,3 +65,12 @@ That seems like more than enough to get started. If we make it this far, we shou
 
 
 **N.B.** There's nothing about wallet functionality on the roadmap. That's intentional. ***You shouldn't store BTC on a hot device unless you really know what you're doing***, so having a wallet on your node is asking for trouble. We won't add this feature unless there's a very compelling need to do so. 
+
+# Getting Started
+1. [Install the Rust Compiler](https://www.rust-lang.org/tools/install)
+1. Clone this repository `git clone https://github.com/preston-evans98/bitcoin-warp.git`
+1. `cd bitcoin-warp`
+1. Run `cargo test --all` to build the client and run all unit tests. 
+1. (Optional) `cargo run` to see the experimental warp shell in action. This shell let's you connect to any other client running Bitcoin and send and receive messages from the command line. Note: This is very much a work in progress. It depends on some functionality from the connection manager, which won't be fully implemented until the end of the Alpha stage. 
+
+
