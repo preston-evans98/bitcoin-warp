@@ -2,7 +2,7 @@ use crate::block_header::BlockHeader;
 use crate::transaction::Transaction;
 use serde_derive::{Deserializable, Serializable};
 use shared::{CompactInt, Serializable};
-#[derive(Deserializable, Serializable)]
+#[derive(Deserializable, Serializable, Debug)]
 pub struct Block {
     block_header: BlockHeader,
     transactions: Vec<Transaction>,

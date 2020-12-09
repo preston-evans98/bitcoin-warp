@@ -2,7 +2,7 @@
 use crate::InventoryData;
 use serde_derive::{Deserializable, Serializable};
 use shared::{CompactInt, Serializable};
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct Inv {
     inventory: Vec<InventoryData>,
 }

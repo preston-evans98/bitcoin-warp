@@ -2,7 +2,7 @@ use crate::command::Command;
 use serde_derive::{Deserializable, Serializable};
 use shared::{Deserializable, DeserializationError, Serializable};
 
-#[derive(Deserializable, Serializable)]
+#[derive(Deserializable, Serializable, Debug)]
 pub struct Header {
     magic: u32,
     command: Command,
@@ -36,7 +36,6 @@ impl Header {
         self.command.clone()
     }
     pub fn from_body(magic: u32, command: Command, body: &Vec<u8>) -> Header {
-        // let hash = body.double_sha256().iter().take(4)?.collect();
         let hash = warp_crypto::double_sha256(body);
         let checksum = [hash[0], hash[1], hash[2], hash[3]];
         Header {

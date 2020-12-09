@@ -1,3 +1,5 @@
+use serde_derive::{Deserializable, Serializable};
+#[derive(Debug, Serializable, Deserializable)]
 pub struct Mempool {}
 
 impl crate::payload::Payload for Mempool {

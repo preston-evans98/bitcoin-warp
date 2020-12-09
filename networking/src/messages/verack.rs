@@ -1,3 +1,5 @@
+use serde_derive::{Deserializable, Serializable};
+#[derive(Serializable, Deserializable, Debug)]
 pub struct Verack {}
 
 impl crate::payload::Payload for Verack {

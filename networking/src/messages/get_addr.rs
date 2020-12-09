@@ -1,3 +1,5 @@
+use serde_derive::{Deserializable, Serializable};
+#[derive(Debug, Serializable, Deserializable)]
 pub struct GetAddr {}
 
 impl crate::Payload for GetAddr {

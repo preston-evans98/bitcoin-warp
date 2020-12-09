@@ -1,6 +1,6 @@
 use serde_derive::{Deserializable, Serializable};
 use shared::{u256, CompactInt};
-#[derive(Deserializable, Serializable)]
+#[derive(Deserializable, Serializable, Debug)]
 pub struct Transaction {
     version: i32,
     inputs: Vec<TxInput>,
@@ -27,7 +27,7 @@ impl Transaction {
         }
     }
 }
-#[derive(Deserializable, Serializable)]
+#[derive(Deserializable, Serializable, Debug)]
 pub struct TxInput {
     previous_outpoint: TxOutpoint,
     signature_script: Vec<u8>,
@@ -48,7 +48,7 @@ impl TxInput {
         }
     }
 }
-#[derive(Deserializable, Serializable)]
+#[derive(Deserializable, Serializable, Debug)]
 pub struct TxOutput {
     value: i64,
     pk_script: Vec<u8>,
@@ -61,7 +61,7 @@ impl TxOutput {
         TxOutput { value, pk_script }
     }
 }
-#[derive(Deserializable, Serializable)]
+#[derive(Deserializable, Serializable, Debug)]
 pub struct TxOutpoint {
     hash: u256,
     index: u32,

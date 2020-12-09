@@ -1,6 +1,6 @@
 use serde_derive::{Deserializable, Serializable};
 use shared::Serializable;
-#[derive(Serializable, Deserializable)]
+#[derive(Serializable, Deserializable, Debug)]
 pub struct Pong {
     nonce: u64,
 }

@@ -15,6 +15,7 @@ warp-crypto = { path = "crypto" }
 serde_derive = { path = "serde_derive" }
 hex = "0.4.2"
 tokio = { version = "0.3.4", features = ["full"] }
+env_logger = "0.8.2"
 
 [[bin]]
 name = "main"
