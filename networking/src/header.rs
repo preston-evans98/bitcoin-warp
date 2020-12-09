@@ -2,7 +2,7 @@ use crate::command::Command;
 use serde_derive::{Deserializable, Serializable};
 use shared::{Deserializable, DeserializationError, Serializable};
 
-#[derive(Deserializable, Serializable)]
+#[derive(Deserializable, Serializable, Debug)]
 pub struct Header {
     magic: u32,
     command: Command,

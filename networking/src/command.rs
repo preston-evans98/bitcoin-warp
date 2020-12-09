@@ -1,5 +1,6 @@
-// use crate::payload::Payload;
 use shared::{Deserializable, DeserializationError, Serializable};
+use DeserializationError::Parse;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     Version,
@@ -62,90 +63,48 @@ impl Command {
             Command::SendHeaders => b"sendheaders\0",
         }
     }
-    pub fn print_body<R>(&self, msg: &mut R) -> Result<(), DeserializationError>
+    pub fn deserialize_body<R>(
+        &self,
+        msg: &mut R,
+    ) -> Result<Box<dyn crate::payload::Payload>, DeserializationError>
     where
         R: std::io::Read,
     {
         match self {
-            Command::Version => println!("{:#?}", crate::Version::deserialize(msg)?),
-            Command::Verack => println!("{:#?}", crate::Verack::deserialize(msg)?),
-            Command::GetBlocks => println!("{:#?}", crate::GetBlocks::deserialize(msg)?),
-            Command::GetData => println!("{:#?}", crate::GetData::deserialize(msg)?),
-            Command::Block => println!("{:#?}", crate::Block::deserialize(msg)?),
-            Command::GetHeaders => println!("{:#?}", crate::GetHeaders::deserialize(msg)?),
-            Command::BlockTxn => println!("{:#?}", crate::BlockTxn::deserialize(msg)?),
-            Command::CmpctBlock => println!("{:#?}", crate::CompactBlock::deserialize(msg)?),
-            Command::Headers => println!("{:#?}", crate::Headers::deserialize(msg)?),
-            Command::Inv => println!("{:#?}", crate::Inv::deserialize(msg)?),
-            Command::MemPool => println!("{:#?}", crate::Mempool::deserialize(msg)?),
-            Command::MerkleBlock => println!("{:#?}", crate::MerkleBlock::deserialize(msg)?),
-            Command::SendCmpct => println!("{:#?}", crate::SendCompact::deserialize(msg)?),
-            Command::GetBlockTxn => println!("{:#?}", crate::GetBlockTxn::deserialize(msg)?),
-            Command::NotFound => println!("{:#?}", crate::NotFound::deserialize(msg)?),
-            Command::Tx => println!("{:#?}", crate::Tx::deserialize(msg)?),
-            Command::Addr => println!("{:#?}", crate::Addr::deserialize(msg)?),
+            Command::Version => Ok(Box::new(crate::Version::deserialize(msg)?)),
+            Command::Verack => Ok(Box::new(crate::Verack::deserialize(msg)?)),
+            Command::GetBlocks => Ok(Box::new(crate::GetBlocks::deserialize(msg)?)),
+            Command::GetData => Ok(Box::new(crate::GetData::deserialize(msg)?)),
+            Command::Block => Ok(Box::new(crate::Block::deserialize(msg)?)),
+            Command::GetHeaders => Ok(Box::new(crate::GetHeaders::deserialize(msg)?)),
+            Command::BlockTxn => Ok(Box::new(crate::BlockTxn::deserialize(msg)?)),
+            Command::CmpctBlock => Ok(Box::new(crate::CompactBlock::deserialize(msg)?)),
+            Command::Headers => Ok(Box::new(crate::Headers::deserialize(msg)?)),
+            Command::Inv => Ok(Box::new(crate::Inv::deserialize(msg)?)),
+            Command::MemPool => Ok(Box::new(crate::Mempool::deserialize(msg)?)),
+            Command::MerkleBlock => Ok(Box::new(crate::MerkleBlock::deserialize(msg)?)),
+            Command::SendCmpct => Ok(Box::new(crate::SendCompact::deserialize(msg)?)),
+            Command::GetBlockTxn => Ok(Box::new(crate::GetBlockTxn::deserialize(msg)?)),
+            Command::NotFound => Ok(Box::new(crate::NotFound::deserialize(msg)?)),
+            Command::Tx => Ok(Box::new(crate::Tx::deserialize(msg)?)),
+            Command::Addr => Ok(Box::new(crate::Addr::deserialize(msg)?)),
             // Command::Alert => println!("{:#?}", crate::Alert::deserialize(msg)?),
-            Command::FeeFilter => println!("{:#?}", crate::FeeFilter::deserialize(msg)?),
-            Command::FilterAdd => println!("{:#?}", crate::FilterAdd::deserialize(msg)?),
-            Command::FilterClear => println!("{:#?}", crate::FilterClear::deserialize(msg)?),
-            Command::FilterLoad => println!("{:#?}", crate::FilterLoad::deserialize(msg)?),
-            Command::GetAddr => println!("{:#?}", crate::GetAddr::deserialize(msg)?),
-            Command::Ping => println!("{:#?}", crate::Ping::deserialize(msg)?),
-            Command::Pong => println!("{:#?}", crate::Pong::deserialize(msg)?),
-            // Command::Reject => println!("{:#?}", crate::Reject::deserialize(msg)?),
-            Command::SendHeaders => println!("{:#?}", crate::SendHeaders::deserialize(msg)?),
-            _ => panic!(),
+            Command::FeeFilter => Ok(Box::new(crate::FeeFilter::deserialize(msg)?)),
+            Command::FilterAdd => Ok(Box::new(crate::FilterAdd::deserialize(msg)?)),
+            Command::FilterClear => Ok(Box::new(crate::FilterClear::deserialize(msg)?)),
+            Command::FilterLoad => Ok(Box::new(crate::FilterLoad::deserialize(msg)?)),
+            Command::GetAddr => Ok(Box::new(crate::GetAddr::deserialize(msg)?)),
+            Command::Ping => Ok(Box::new(crate::Ping::deserialize(msg)?)),
+            Command::Pong => Ok(Box::new(crate::Pong::deserialize(msg)?)),
+            // Command::Reject => Ok(Box::new(crate::Reject::deserialize(msg)?)),
+            Command::SendHeaders => Ok(Box::new(crate::SendHeaders::deserialize(msg)?)),
+            _ => Err(Parse(format!(
+                "Command::deserialize_body not implemented for {:?}",
+                self
+            ))),
         }
-        Ok(())
     }
-
-    // pub fn full_type(&self) -> T {
-    //     match self {
-    //         Command::Version => crate::Version,
-    //         // Command::Verack =>crate::Verack,
-    //         // Command::GetBlocks => crate::GetBlocks,
-    //         // Command::GetData => crate::GetData,
-    //         // Command::Block => crate::Block,
-    //         // Command::GetHeaders => crate::GetHeaders,
-    //         // Command::BlockTxn => crate::BlockTxn,
-    //         // Command::CmpctBlock => crate::CmpctBlock,
-    //         // Command::Headers => crate::Headers,
-    //         // Command::Inv => crate::Inv,
-    //         // Command::MemPool => crate::MemPool,
-    //         // Command::MerkleBlock => crate::MerkleBlock,
-    //         // Command::SendCmpct => crate::SendCmpct,
-    //         // Command::GetBlockTxn => crate::GetBlockTxn,
-    //         // Command::NotFound => crate::NotFound,
-    //         // Command::Tx => crate::Tx:,
-    //         // Command::Addr => crate::Addr,
-    //         // Command::Alert => crate::Alert,
-    //         // Command::FeeFilter => crate::FeeFilter,
-    //         // Command::FilterAdd => crate::FilterAdd,
-    //         // Command::FilterClear => crate::FilterClear,
-    //         // Command::FilterLoad => crate::FilterLoad,
-    //         // Command::GetAddr => crate::GetAddr,
-    //         // Command::Ping => crate::Ping,
-    //         // Command::Pong => crate::Pong,
-    //         // Command::Reject => crate::Reject,
-    //         // Command::SendHeaders => crate::SendHeaders,
-    //         _ => panic!(),
-    //     }
-    // }
 }
-
-// macro_rules! command_bytes {
-//     // () => {
-//     //     pub fn bytes(&self) -> &[u8; 12] {
-//     //         match self {
-//     //             Command::Version => b"version\0\0\0\0\0",
-//     //             Command::Verack => b"verack\0\0\0\0\0\0",
-//     //             Command::GetBlocks => b"getblocks\0\0\0",
-//     //             Command::GetData => b"getdata\0\0\0\0\0",
-//     //             Command::Block => b"block\0\0\0\0\0\0\0",
-//     //             Command::GetHeaders => b"getheaders\0\0",
-//     //         }
-//     //     }
-//     // };
 
 impl Serializable for Command {
     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
