@@ -1,7 +1,9 @@
 extern crate hex;
 extern crate serde_derive;
 use daemon::run_shell;
+use env_logger::Env;
 use serde_derive::{Deserializable, Serializable};
+use std::io::Write;
 
 #[derive(Serializable, Deserializable, Debug)]
 pub struct MyTestStruct {
@@ -46,6 +48,9 @@ pub struct MyTestStruct {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::Builder::from_env(Env::default().default_filter_or("debug"))
+        .format(|buf, record| writeln!(buf, "{}: {}", record.level(), record.args()))
+        .init();
     run_shell().await?;
     // // test();
 
