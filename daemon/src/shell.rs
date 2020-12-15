@@ -20,11 +20,14 @@ pub mod shell {
                     Err(_) => {}
                 }
                 self.instream.read_line(&mut raw_input).unwrap();
-                match self.quit.try_recv() {
-                    Ok(_) => break,
-                    Err(_) => {}
+
+                self.sender
+                    .send(raw_input.clone())
+                    .expect("Couldn't send. Odd");
+                match raw_input.trim_end() {
+                    "q" | "quit" => break,
+                    _ => {}
                 }
-                self.sender.send(raw_input).expect("Couldn't send. Odd");
             }
         }
     }
@@ -35,14 +38,6 @@ pub mod shell {
             .flush()
             .expect("Yikes. Stdout isn't working");
     }
-    // async fn peer_get_command() -> String {
-    //     let mut raw_input = String::new();
-    //     write_prompt("warp shell - peer mode>");
-    //     std::io::BufReader::new(std::io::stdin())
-    //         .read_line(&mut raw_input)
-    //         .unwrap();
-    //     raw_input
-    // }
 
     async fn peer_mode(
         peer: &mut Peer,
@@ -62,13 +57,16 @@ pub mod shell {
                     let contents = val.expect("Nothing received");
                     let cmd = contents.trim_end();
                     match cmd {
-                        "b" | "q" => return Ok(()),
+                        "b" => return Ok(()),
+                        "q" | "quit" => std::process::exit(0),
                         "l" => {
                             println!("Waiting to receive...");
                                 let _ = peer.receive(None).await;},
                         "h" | "help" => {
                             println!("\npeer shell commands: ");
-                            println!("   b: back");
+                            println!("   q: quit");
+                            println!("   h: help");
+                            println!("   b: back to top levlel");
                             println!("   version: send version msg");
                             println!("   verack: send verack");
                             println!("");
@@ -103,11 +101,10 @@ pub mod shell {
             quit: quit_recv,
         };
         let h1 = tokio::task::spawn_blocking(|| async move {
-            std_reader.run();
+            std_reader.run().await;
         });
         let h2 = tokio::spawn(async move { main_loop(rx, quitter).await });
         let (_, _) = tokio::join!(h2, h1.await.expect("Couldn't run stdReader"));
-
         Ok(())
     }
 
@@ -122,12 +119,13 @@ pub mod shell {
             let input = rx.recv().await.expect("Nothing received");
             match input.trim_end() {
                 "exit" | "q" => {
-                    quitter.send(()).unwrap();
+                    let _ = quitter.send(());
                     break;
                 }
                 "help" | "h" => {
                     println!("\nwarp shell commands: ");
                     println!("   q: quit");
+                    println!("   h: help");
                     println!("   a: add a peer (outbound)");
                     println!("   l: listen for connection (add peer - inbound)");
                     println!("   p: switch to peer mode");
@@ -177,11 +175,11 @@ pub mod shell {
                 }
                 "peer" | "p" => match daemon.conn_man.peers.len() {
                     0 => {
-                        write_prompt("  No peers found. Press 'a' to add a peer.");
+                        write_prompt("  No peers found. Press 'a' to add a peer.\n\n");
                         continue;
                     }
                     1 => {
-                        write_prompt("  1 peer found. autoselecting...\n");
+                        write_prompt("  1 peer found. autoselecting...\n\n");
                         let peer = &mut daemon.conn_man.peers[0];
                         if let Err(_) = peer_mode(peer, &mut rx).await {
                             daemon.conn_man.peers.pop();
