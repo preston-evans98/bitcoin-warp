@@ -3,10 +3,10 @@ use config::Config;
 use networking::{Peer, PeerError};
 pub use shell::shell::run_shell;
 use std::net::SocketAddr;
-use std::rc::Rc;
+use std::sync::Arc;
 #[derive(Debug)]
 pub struct Daemon {
-    pub config: Rc<Config>,
+    pub config: Arc<Config>,
     conn_man: ConnectionManager,
 }
 
@@ -18,12 +18,12 @@ impl ConnectionManager {
     pub fn new() -> ConnectionManager {
         ConnectionManager { peers: Vec::new() }
     }
-    pub async fn add(&mut self, addr: SocketAddr, config: &Rc<Config>) -> Result<(), PeerError> {
+    pub async fn add(&mut self, addr: SocketAddr, config: &Arc<Config>) -> Result<(), PeerError> {
         let peer = Peer::at_address(self.num_peers(), addr, config.clone()).await?;
         self.peers.push(peer);
         Ok(())
     }
-    pub async fn accept(&mut self, port: &str, config: &Rc<Config>) -> Result<(), PeerError> {
+    pub async fn accept(&mut self, port: &str, config: &Arc<Config>) -> Result<(), PeerError> {
         let addr = format!("127.0.0.1:{}", port);
         let listener = tokio::net::TcpListener::bind(&addr)
             .await
@@ -47,7 +47,7 @@ impl ConnectionManager {
 impl Daemon {
     pub fn new() -> Daemon {
         Daemon {
-            config: Rc::new(Config::mainnet()),
+            config: Arc::new(Config::mainnet()),
             conn_man: ConnectionManager::new(),
         }
     }

@@ -8,7 +8,7 @@ use shared::{u256, DeserializationError};
 use std::io::Cursor;
 use std::net::SocketAddr;
 use std::time::Duration;
-use std::{fmt, rc::Rc};
+use std::{fmt, sync::Arc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
@@ -60,11 +60,11 @@ pub struct Peer {
     daemon_protocol_version: u32,
     services: u64,
     connection: tokio::io::BufStream<TcpStream>,
-    config: Rc<Config>,
+    config: Arc<Config>,
 }
 
 impl Peer {
-    pub async fn at_address(id: usize, address: SocketAddr, config: Rc<Config>) -> Result<Peer> {
+    pub async fn at_address(id: usize, address: SocketAddr, config: Arc<Config>) -> Result<Peer> {
         info!("Peer {}: Opening connection to {:?}...", id, address.ip());
         let connection = timeout(Duration::from_secs(5), TcpStream::connect(address)).await??;
         info!("Peer {}: Connected", id);
@@ -79,7 +79,7 @@ impl Peer {
             config,
         })
     }
-    pub async fn from_connection(id: usize, connection: TcpStream, config: Rc<Config>) -> Peer {
+    pub async fn from_connection(id: usize, connection: TcpStream, config: Arc<Config>) -> Peer {
         info!("Receiving from {:?}", connection.peer_addr());
         Peer {
             peer_id: id,

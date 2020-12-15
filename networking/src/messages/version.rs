@@ -2,7 +2,7 @@ use config::Config;
 use serde_derive::{Deserializable, Serializable};
 use shared::{CompactInt, Serializable};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{net::SocketAddr, rc::Rc};
+use std::{net::SocketAddr, sync::Arc};
 
 type Services = u64;
 #[derive(Deserializable, Serializable, Debug)]
@@ -25,7 +25,7 @@ impl Version {
         peer_services: u64,
         daemon_ip: SocketAddr,
         best_block: u32,
-        config: &Rc<Config>,
+        config: &Arc<Config>,
     ) -> Version {
         Version {
             protocol_version: config.get_protocol_version(),
@@ -71,7 +71,7 @@ fn serial_size() {
         2371,
         ([192, 168, 0, 2], 8333).into(),
         0x2329381,
-        &Rc::new(config::Config::mainnet()),
+        &Arc::new(config::Config::mainnet()),
     );
     let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
     assert_eq!(serial.len(), msg.serialized_size());

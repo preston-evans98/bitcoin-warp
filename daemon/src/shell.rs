@@ -2,16 +2,31 @@ pub mod shell {
     use crate::Daemon;
     use networking::Command;
     use networking::Peer;
+    use std::io::BufRead;
     use std::io::Write;
-    use tokio::io::AsyncBufReadExt;
-    async fn read_trimmed(mut raw_input: &mut String) -> &str {
-        raw_input.truncate(0);
-        tokio::io::BufReader::new(tokio::io::stdin())
-            .read_line(&mut raw_input)
-            .await
-            .unwrap();
-        println!("Input: {}", raw_input);
-        raw_input.trim_end()
+    use tokio::sync::mpsc::UnboundedSender;
+    struct StdReader {
+        instream: std::io::BufReader<std::io::Stdin>,
+        sender: UnboundedSender<String>,
+        quit: tokio::sync::oneshot::Receiver<()>,
+    }
+    impl StdReader {
+        async fn run(&mut self) {
+            self.sender.send(String::from("help")).expect("Uh-oh");
+            loop {
+                let mut raw_input = String::new();
+                match self.quit.try_recv() {
+                    Ok(_) => break,
+                    Err(_) => {}
+                }
+                self.instream.read_line(&mut raw_input).unwrap();
+                match self.quit.try_recv() {
+                    Ok(_) => break,
+                    Err(_) => {}
+                }
+                self.sender.send(raw_input).expect("Couldn't send. Odd");
+            }
+        }
     }
 
     fn write_prompt(message: &str) {
@@ -20,50 +35,56 @@ pub mod shell {
             .flush()
             .expect("Yikes. Stdout isn't working");
     }
-    async fn peer_get_command() -> String {
-        let mut raw_input = String::new();
-        write_prompt("warp shell - peer mode>");
-        tokio::io::BufReader::new(tokio::io::stdin())
-            .read_line(&mut raw_input)
-            .await
-            .unwrap();
-        raw_input
-    }
+    // async fn peer_get_command() -> String {
+    //     let mut raw_input = String::new();
+    //     write_prompt("warp shell - peer mode>");
+    //     std::io::BufReader::new(std::io::stdin())
+    //         .read_line(&mut raw_input)
+    //         .unwrap();
+    //     raw_input
+    // }
 
-    async fn peer_mode(peer: &mut Peer) -> Result<(), networking::PeerError> {
+    async fn peer_mode(
+        peer: &mut Peer,
+        rx: &mut tokio::sync::mpsc::UnboundedReceiver<String>,
+    ) -> Result<(), networking::PeerError> {
         loop {
+            write_prompt("warp shell - peer mode>");
             tokio::select! {
                 val = peer.receive(None) => {
                     if let Err(e) = val {
                         println!("  Peer is experiencing issues. Disconnecting...");
                         return Err(e)
                     }
+                    println!("");
                 },
-                val = peer_get_command() => {
-                    let cmd = val.trim_end();
+                val = rx.recv() => {
+                    let contents = val.expect("Nothing received");
+                    let cmd = contents.trim_end();
                     match cmd {
                         "b" | "q" => return Ok(()),
                         "l" => {
                             println!("Waiting to receive...");
                                 let _ = peer.receive(None).await;},
                         "h" | "help" => {
-                            println!("peer shell commands: ");
+                            println!("\npeer shell commands: ");
                             println!("   b: back");
                             println!("   version: send version msg");
                             println!("   verack: send verack");
+                            println!("");
                         }
                         "Version" | "version" =>  {
                             write_prompt("  Sending... ");
                             peer.send(Command::Version, peer.create_version_msg(None)).await.unwrap();
-                            write_prompt("Done\n");
+                            write_prompt("Done\n\n");
                         }
                         "Verack" | "verack" =>  {
                             write_prompt("  Sending... ");
                             peer.send(Command::Verack, networking::Verack{}).await.unwrap();
-                            write_prompt("  Done\n");
+                            write_prompt("  Done\n\n");
                         }
                         _ => {
-                            println!("Unrecognized command: {}", cmd);
+                            println!("Command not recognized: {}\n", cmd);
                             continue;
                         },
                     }
@@ -73,36 +94,61 @@ pub mod shell {
     }
 
     pub async fn run_shell() -> Result<(), Box<dyn std::error::Error>> {
+        // let mut raw_input = String::new();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let (quitter, quit_recv) = tokio::sync::oneshot::channel();
+        let mut std_reader = StdReader {
+            instream: std::io::BufReader::new(std::io::stdin()),
+            sender: tx,
+            quit: quit_recv,
+        };
+        let h1 = tokio::task::spawn_blocking(|| async move {
+            std_reader.run();
+        });
+        let h2 = tokio::spawn(async move { main_loop(rx, quitter).await });
+        let (_, _) = tokio::join!(h2, h1.await.expect("Couldn't run stdReader"));
+
+        Ok(())
+    }
+
+    pub async fn main_loop(
+        mut rx: tokio::sync::mpsc::UnboundedReceiver<String>,
+        quitter: tokio::sync::oneshot::Sender<()>,
+    ) {
         let mut daemon = Daemon::new();
-        let mut raw_input = String::new();
+        print!("          <Welcome to ");
         loop {
             write_prompt("warp shell>");
-            let input = read_trimmed(&mut raw_input).await;
-            match &input[..] {
-                "exit" | "q" => break,
+            let input = rx.recv().await.expect("Nothing received");
+            match input.trim_end() {
+                "exit" | "q" => {
+                    quitter.send(()).unwrap();
+                    break;
+                }
                 "help" | "h" => {
-                    println!("warp shell commands: ");
+                    println!("\nwarp shell commands: ");
                     println!("   q: quit");
                     println!("   a: add a peer (outbound)");
                     println!("   l: listen for connection (add peer - inbound)");
                     println!("   p: switch to peer mode");
+                    println!("");
                 }
                 "add" | "a" | "connect" | "c" => {
-                    write_prompt("  enter an address:");
-                    let input = read_trimmed(&mut raw_input).await;
-                    if let Ok(addr) = input.parse() {
+                    write_prompt("  enter an ip address and port (i.e. 127.0.0.1:8333):");
+                    let input = rx.recv().await.expect("Nothing received");
+                    if let Ok(addr) = input.trim_end().parse() {
                         println!("  connecting...");
                         if let Err(e) = daemon.add_peer(addr).await {
                             println!("could not connect to peer: {}", e.to_string());
                             continue;
                         } else {
-                            println!("peer added at {}", addr);
+                            println!("peer added at {}\n", addr);
                             let peer: &mut Peer = daemon
                                 .conn_man
                                 .peers
                                 .last_mut()
                                 .expect("Should have just added a peeer");
-                            if let Err(_) = peer_mode(peer).await {
+                            if let Err(_) = peer_mode(peer, &mut rx).await {
                                 daemon.conn_man.peers.pop();
                             }
                         }
@@ -111,10 +157,10 @@ pub mod shell {
                     }
                 }
                 "listen" | "l" => {
-                    write_prompt("  enter a port:");
-                    let addr = read_trimmed(&mut raw_input).await;
+                    write_prompt("  enter a port number:");
+                    let addr = rx.recv().await.expect("Nothing received");
                     println!("  listening...");
-                    if let Err(e) = daemon.accept_peer(addr).await {
+                    if let Err(e) = daemon.accept_peer(addr.trim_end()).await {
                         println!("could not accept connection: {}", e.to_string());
                         continue;
                     } else {
@@ -125,7 +171,7 @@ pub mod shell {
                         .peers
                         .last_mut()
                         .expect("Should have just added a peeer");
-                    if let Err(_) = peer_mode(peer).await {
+                    if let Err(_) = peer_mode(peer, &mut rx).await {
                         daemon.conn_man.peers.pop();
                     }
                 }
@@ -137,7 +183,7 @@ pub mod shell {
                     1 => {
                         write_prompt("  1 peer found. autoselecting...\n");
                         let peer = &mut daemon.conn_man.peers[0];
-                        if let Err(_) = peer_mode(peer).await {
+                        if let Err(_) = peer_mode(peer, &mut rx).await {
                             daemon.conn_man.peers.pop();
                         }
                     }
@@ -146,10 +192,10 @@ pub mod shell {
                             "  select a peer by id (0...{}) or 'b' to go back:",
                             daemon.conn_man.peers.len() - 1
                         ));
-                        let input = read_trimmed(&mut raw_input).await;
-                        if let Ok(id) = input.parse::<usize>() {
+                        let input = rx.recv().await.expect("Nothing received");
+                        if let Ok(id) = input.trim_end().parse::<usize>() {
                             let peer = &mut daemon.conn_man.peers[id];
-                            if let Err(_) = peer_mode(peer).await {
+                            if let Err(_) = peer_mode(peer, &mut rx).await {
                                 daemon.conn_man.peers.remove(id);
                             }
                             break;
@@ -163,6 +209,5 @@ pub mod shell {
                 _ => continue,
             }
         }
-        Ok(())
     }
 }
