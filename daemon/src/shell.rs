@@ -11,7 +11,7 @@ pub mod shell {
         quit: tokio::sync::oneshot::Receiver<()>,
     }
     impl StdReader {
-        async fn run(&mut self) {
+        fn run(&mut self) {
             self.sender.send(String::from("help")).expect("Uh-oh");
             loop {
                 let mut raw_input = String::new();
@@ -101,7 +101,7 @@ pub mod shell {
             quit: quit_recv,
         };
         let h1 = tokio::task::spawn_blocking(|| async move {
-            std_reader.run().await;
+            std_reader.run();
         });
         let h2 = tokio::spawn(async move { main_loop(rx, quitter).await });
         let (_, _) = tokio::join!(h2, h1.await.expect("Couldn't run stdReader"));
