@@ -207,4 +207,25 @@ impl Peer {
             &self.config,
         )
     }
+    pub async fn event_loop(&mut self) {
+        loop {
+            self.receive(None).await;
+        }
+    }
+    // pub async fn event_loop(&mut self, channel_in: tokio::sync::mpsc::Receiver<(Command, Box<dyn Payload>)>, channel_out: tokio::sync::mpsc::Sender<Result()>>) {
+    //     loop {
+    //         // tokio::select! {
+    //         //     (header, payload) = self.receive(None) => {
+    //         //         self.handle_msg(header, payload)
+    //         //     },
+    //         //     (cmd, payload) = headquarters.recv() => {
+    //         //         channel_out.send(self.send(cmd, payload.into()).await)
+    //         //     }
+    //         // }
+    //     }
+
+    // }
+    pub async fn handle_msg(&mut self, header: Header, payload: Vec<u8>) {
+        // unimplemented!()
+    }
 }

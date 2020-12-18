@@ -33,13 +33,13 @@ Implementation of Bitcoin Warp is split into several phases with accompanying mi
 ### 1. Basic Networking (Feature Complete - in QA)
 Implement the Bitcoin wire protocol. Allows messages to be exchanged with nodes running Bitcoin Core to allow fetching blocks etc. during development. Does not include peer management, mempool, etc. 
 ### 2. Basic Validation (Implementation In Progress)
-Implement the basic logic to validate blocks and transactions. This includes things like checking signatures and block hashes. Partially dependent on 3. This implementation will be unoptimized, and may not include changes introduced into Bitcoin via soft fork. These changes will be added in the next Phase. 
+Implement the basic logic to validate blocks and transactions. This includes things like checking signatures and block hashes. Partially dependent on 3. This implementation will be unoptimized, and may not include changes introduced into Bitcoin via soft fork. These changes will be added in the next phase. 
 ### 3. Basic Database
 Implement a minimum viable database layer to store blocks and UTXOs. Likely LevelDB initially. 
-### 4. Basic Interface
+### 4. Basic Interface (Implementation In Progress)
 Implement config files and simple CLI. 
-### 5. Advanced Networking
-Implement a connection manager. Accomplishment of this milestone marks the client ready for Alpha Launch.
+### 5. Advanced Networking (Implementation In Progress)
+Implement a connection manager following the innovations in [Zcash Zebra](https://doc.zebra.zfnd.org/zebra_network/index.html). Accomplishment of this milestone marks the client ready for Alpha Launch.
 
 
 ## Alpha
@@ -72,5 +72,3 @@ That seems like more than enough to get started. If we make it this far, we shou
 1. `cd bitcoin-warp`
 1. Run `cargo test --all` to build the client and run all unit tests. 
 1. (Optional) `cargo run` to see the experimental warp shell in action. This shell let's you connect to any other client running Bitcoin and send and receive messages from the command line. Note: This is very much a work in progress. It depends on some functionality from the connection manager, which won't be fully implemented until the end of the Alpha stage. 
-
-
