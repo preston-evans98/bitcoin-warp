@@ -54,4 +54,7 @@ impl Header {
             .expect("Serializing to vec should not fail!");
         result
     }
+    pub fn len() -> usize {
+        20
+    }
 }

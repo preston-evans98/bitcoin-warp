@@ -4,6 +4,9 @@ pub use command::Command;
 mod message;
 pub use message::Message;
 
+mod codec;
+pub use codec::Codec;
+
 mod peer;
 pub use peer::{Peer, PeerError};
 
