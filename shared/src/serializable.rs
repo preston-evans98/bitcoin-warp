@@ -18,6 +18,24 @@ impl Serializable for bool {
     }
 }
 
+impl Serializable for &u8 {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_all(&[*(*self) as u8])
+    }
+}
+
+impl Serializable for &char {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        target.write_all(&[*(*self) as u8])
+    }
+}
+
 macro_rules! impl_ser_primitive {
     ($($t:ty),+) => {
         $(impl Serializable for $t {
@@ -168,7 +186,7 @@ where
         Ok(())
     }
 }
-impl Serializable for String{
+impl Serializable for String {
     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
     where
         W: std::io::Write,
