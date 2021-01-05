@@ -1,7 +1,7 @@
 use config::Config;
-use log::warn;
 use serde_derive::{Deserializable, Serializable};
 use shared::{u256, CompactInt, Serializable};
+use tracing::warn;
 
 #[derive(Serializable, Deserializable, Debug)]
 pub struct GetBlocks {

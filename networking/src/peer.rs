@@ -3,7 +3,6 @@ use crate::header::Header;
 use crate::messages::{InventoryData, Verack, Version};
 use crate::payload::Payload;
 use config::Config;
-use log::{debug, info, trace};
 use shared::{u256, DeserializationError};
 use std::io::Cursor;
 use std::net::SocketAddr;
@@ -12,6 +11,7 @@ use std::{fmt, sync::Arc};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
+use tracing::{debug, info, trace};
 
 type Result<T> = std::result::Result<T, PeerError>;
 
@@ -150,14 +150,14 @@ impl Peer {
             self.connection.read_exact(&mut payload),
         )
         .await??;
-        if log::log_enabled!(log::Level::Debug) {
-            debug!(
-                "Body: {:#?}",
-                header
-                    .get_command()
-                    .deserialize_body(&mut std::io::Cursor::new(&payload))
-            );
-        }
+        // if tracing::log_enabled!(log::Level::Debug) {
+        //     debug!(
+        //         "Body: {:#?}",
+        //         header
+        //             .get_command()
+        //             .deserialize_body(&mut std::io::Cursor::new(&payload))
+        //     );
+        // }
         Ok((header, payload))
     }
     pub async fn receive_expected(
