@@ -205,3 +205,15 @@ impl Serializable for String {
         Ok(())
     }
 }
+
+impl<T: Serializable> Serializable for Option<T> {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        match self {
+            Some(contents) => return contents.serialize(target),
+            None => Ok(()),
+        }
+    }
+}

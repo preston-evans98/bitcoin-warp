@@ -4,18 +4,19 @@
 // use tokio::net::TcpStream;
 
 use crate::block_header::BlockHeader;
+use crate::messages::EncapsulatedAddr;
 use crate::transaction::Transaction;
 use crate::InventoryData;
 use serde_derive::{Deserializable, Serializable};
 use shared::{u256, CompactInt};
 use std::net::SocketAddr;
 
-#[derive(Serializable, Deserializable, Debug)]
-pub struct EncapsulatedAddr {
-    time: u32,
-    services: u64,
-    addr: SocketAddr,
-}
+// #[derive(Serializable, Deserializable, Debug)]
+// pub struct EncapsulatedAddr {
+//     time: u32,
+//     services: u64,
+//     addr: SocketAddr,
+// }
 
 #[derive(Serializable, Deserializable, Debug)]
 pub struct PrefilledTransaction {
@@ -23,11 +24,43 @@ pub struct PrefilledTransaction {
     pub tx: Transaction,
 }
 
-type Services = u64;
-type Nonce = u64;
-type Version = u32;
+pub type Services = u64;
+pub type Nonce = u64;
+pub type Version = u32;
+
+// impl Deserializable for Services {
+//     fn deserialize<R>(reader: &mut R) -> Result<Self, shared::DeserializationError>
+//     where
+//         Self: Sized,
+//         R: std::io::Read,
+//     {
+//         let result = u64::deserialize(reader)?;
+//         Ok(result as Services)
+//     }
+// }
+
+// impl Deserializable for Nonce {
+//     fn deserialize<R>(reader: &mut R) -> Result<Self, shared::DeserializationError>
+//     where
+//         Self: Sized,
+//         R: std::io::Read,
+//     {
+//         todo!()
+//     }
+// }
+
+// impl Deserializable for Version {
+//     fn deserialize<R>(reader: &mut R) -> Result<Self, shared::DeserializationError>
+//     where
+//         Self: Sized,
+//         R: std::io::Read,
+//     {
+//         todo!()
+//     }
+// }
 
 #[derive(Debug, Serializable)]
+// #[derive(Debug, Serializable, Deserializable)]
 pub enum Message {
     Addr {
         addrs: Vec<EncapsulatedAddr>,
@@ -99,12 +132,11 @@ pub enum Message {
     Pong {
         nonce: Nonce,
     },
-    // FIXME: write special deserialize
     Reject {
         message: String,
-        code: char,
+        code: u8,
         reason: String,
-        // extra_data: Option<[u8; 32]>,
+        extra_data: Option<[u8; 32]>,
     },
     SendCompact {
         announce: bool,
@@ -129,14 +161,3 @@ pub enum Message {
         relay: bool,
     },
 }
-
-// impl shared::Serializable for Message {
-//     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
-//     where
-//         W: std::io::Write,
-//     {
-//         match *self {
-//             _ => self.serialize(target),
-//         }
-//     }
-// }

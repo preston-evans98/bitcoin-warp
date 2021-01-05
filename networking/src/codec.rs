@@ -1,13 +1,15 @@
-use crate::Message;
-use bytes::{BufMut, BytesMut};
-// // impl
 use crate::block_header::BlockHeader;
 use crate::header::Header;
-use shared::CompactInt;
+use crate::Transaction;
+use crate::{message::PrefilledTransaction, InventoryData, Message};
+use bytes::{BufMut, BytesMut};
 use shared::Serializable;
+use shared::{u256, CompactInt, Deserializable, DeserializationError};
+use tracing::{self, debug, trace};
 
 pub struct Codec {
     magic: u32,
+    state: DecoderState,
 }
 
 impl tokio_util::codec::Encoder<Message> for Codec {
@@ -69,9 +71,74 @@ impl tokio_util::codec::Encoder<Message> for Codec {
         Ok(())
     }
 }
-// impl Decoder for Codec {}
+
+enum DecoderState {
+    Header,
+    Body { header: Header },
+}
+
+impl tokio_util::codec::Decoder for Codec {
+    type Error = shared::DeserializationError;
+
+    type Item = Message;
+
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        match self.state {
+            DecoderState::Header => {
+                if src.len() < Header::len() {
+                    return Ok(None);
+                }
+
+                let reader = src.split_to(Header::len());
+                let mut reader = std::io::Cursor::new(reader);
+
+                let header = Header::deserialize(&mut reader, self.magic)?;
+                self.set_decoder_state(DecoderState::Body { header });
+
+                // Recursively decode body
+                self.decode(src)
+            }
+
+            DecoderState::Body { ref header } => {
+                if src.len() < header.get_payload_size() {
+                    return Ok(None);
+                }
+
+                let reader = src.split_to(Header::len());
+                let mut reader = std::io::Cursor::new(reader);
+
+                let contents = self.deserialize(&mut reader)?;
+                Ok(Some(contents))
+            }
+        }
+    }
+
+    // fn decode_eof(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+    //     match self.decode(buf)? {
+    //         Some(frame) => Ok(Some(frame)),
+    //         None => {
+    //             if buf.is_empty() {
+    //                 Ok(None)
+    //             } else {
+    //                 Err(std::io::Error::new(std::io::ErrorKind::Other, "bytes remaining on stream").into())
+    //             }
+    //         }
+    //     }
+    // }
+
+    // fn framed<T: AsyncRead + AsyncWrite + Sized>(self, io: T) -> tokio_util::codec::Framed<T, Self>
+    // where
+    //     Self: Sized,
+    // {
+    //     tokio_util::codec::Framed::new(std::io, self)
+    // }
+}
 
 impl Codec {
+    fn set_decoder_state(&mut self, state: DecoderState) {
+        self.state = state;
+    }
+
     fn get_serialized_size(&self, msg: &Message) -> usize {
         match msg {
             Message::Addr { ref addrs } => {
@@ -191,6 +258,7 @@ impl Codec {
                 message: _,
                 code: _,
                 reason: _,
+                extra_data: _,
             } => {
                 unimplemented!()
             }
@@ -214,6 +282,141 @@ impl Codec {
                 best_block: _,
                 relay: _,
             } => 85 + CompactInt::size(user_agent.len()) + user_agent.len(),
+        }
+    }
+
+    fn deserialize<R: std::io::Read>(
+        &mut self,
+        src: &mut R,
+    ) -> Result<Message, DeserializationError> {
+        match self.state {
+            DecoderState::Header => {
+                unreachable!(
+                    "Should never try to decode message body while in 'Header' decoder state"
+                );
+            }
+            DecoderState::Body { ref header } => {
+                let msg = match header.get_command() {
+                    crate::Command::Addr => {
+                        let addrs = Vec::<crate::messages::EncapsulatedAddr>::deserialize(src)?;
+                        Message::Addr { addrs }
+                    }
+                    crate::Command::Version => Message::Version {
+                        protocol_version: crate::message::Version::deserialize(src)?,
+                        services: crate::message::Services::deserialize(src)?,
+                        timestamp: u64::deserialize(src)?,
+                        receiver_services: crate::message::Services::deserialize(src)?,
+                        receiver: std::net::SocketAddr::deserialize(src)?,
+                        transmitter_services: crate::message::Services::deserialize(src)?,
+                        transmitter_ip: std::net::SocketAddr::deserialize(src)?,
+                        nonce: crate::message::Nonce::deserialize(src)?,
+                        user_agent: <Vec<u8>>::deserialize(src)?,
+                        best_block: u32::deserialize(src)?,
+                        relay: bool::deserialize(src)?,
+                    },
+                    crate::Command::Verack => Message::Verack {},
+                    crate::Command::GetBlocks => Message::GetBlocks {
+                        protocol_version: crate::message::Version::deserialize(src)?,
+                        block_header_hashes: <Vec<u256>>::deserialize(src)?,
+                        stop_hash: u256::deserialize(src)?,
+                    },
+                    crate::Command::GetData => Message::GetData {
+                        inventory: <Vec<InventoryData>>::deserialize(src)?,
+                    },
+                    crate::Command::Block => Message::Block {
+                        block_header: BlockHeader::deserialize(src)?,
+                        transactions: <Vec<Transaction>>::deserialize(src)?,
+                    },
+                    crate::Command::GetHeaders => Message::GetHeaders {
+                        protocol_version: crate::message::Version::deserialize(src)?,
+                        block_header_hashes: <Vec<u256>>::deserialize(src)?,
+                        stop_hash: u256::deserialize(src)?,
+                    },
+                    crate::Command::Headers => Message::Headers {
+                        headers: <Vec<BlockHeader>>::deserialize(src)?,
+                    },
+                    crate::Command::Inv => Message::Inv {
+                        inventory: <Vec<InventoryData>>::deserialize(src)?,
+                    },
+                    crate::Command::MemPool => Message::MemPool {},
+                    crate::Command::MerkleBlock => Message::MerkleBlock {
+                        block_header: BlockHeader::deserialize(src)?,
+                        transaction_count: u32::deserialize(src)?,
+                        hashes: <Vec<u256>>::deserialize(src)?,
+                        flags: <Vec<u8>>::deserialize(src)?,
+                    },
+                    crate::Command::CmpctBlock => Message::CompactBlock {
+                        header: BlockHeader::deserialize(src)?,
+                        nonce: crate::message::Nonce::deserialize(src)?,
+                        short_ids: <Vec<u64>>::deserialize(src)?,
+                        prefilled_txns: <Vec<PrefilledTransaction>>::deserialize(src)?,
+                    },
+                    crate::Command::GetBlockTxn => Message::GetBlockTxn {
+                        block_hash: <[u8; 32]>::deserialize(src)?,
+                        indexes: <Vec<CompactInt>>::deserialize(src)?,
+                    },
+                    crate::Command::BlockTxn => Message::BlockTxn {
+                        block_hash: <[u8; 32]>::deserialize(src)?,
+                        txs: <Vec<Transaction>>::deserialize(src)?,
+                    },
+                    crate::Command::SendCmpct => Message::SendCompact {
+                        announce: bool::deserialize(src)?,
+                        version: u64::deserialize(src)?,
+                    },
+                    crate::Command::NotFound => Message::NotFound {
+                        inventory_data: <Vec<InventoryData>>::deserialize(src)?,
+                    },
+                    crate::Command::Tx => Message::Tx {
+                        transaction: Transaction::deserialize(src)?,
+                    },
+                    crate::Command::Alert => {
+                        // TODO: Verify that no additional cleanup is required.
+                        self.set_decoder_state(DecoderState::Header);
+                        return Err(DeserializationError::Parse(format!(
+                            "Received Alert message! Alert is insecure and deprecated"
+                        )));
+                    }
+                    crate::Command::FeeFilter => Message::FeeFilter {
+                        feerate: u64::deserialize(src)?,
+                    },
+                    crate::Command::FilterAdd => Message::FilterAdd {
+                        elements: <Vec<Vec<u8>>>::deserialize(src)?,
+                    },
+                    crate::Command::FilterClear => Message::FilterClear {},
+                    crate::Command::FilterLoad => Message::FilterLoad {
+                        filter: <Vec<u8>>::deserialize(src)?,
+                        n_hash_funcs: u32::deserialize(src)?,
+                        n_tweak: u32::deserialize(src)?,
+                        n_flags: u8::deserialize(src)?,
+                    },
+                    crate::Command::GetAddr => Message::GetAddr {},
+                    crate::Command::Ping => Message::Ping {
+                        nonce: crate::message::Nonce::deserialize(src)?,
+                    },
+                    crate::Command::Pong => Message::Pong {
+                        nonce: crate::message::Nonce::deserialize(src)?,
+                    },
+                    crate::Command::Reject => Message::Reject {
+                        message: String::deserialize(src)?,
+                        code: u8::deserialize(src)?,
+                        reason: String::deserialize(src)?,
+                        extra_data: <[u8; 32]>::deserialize(src).ok(),
+                    },
+                    crate::Command::SendHeaders => Message::SendHeaders {},
+                };
+
+                trace!("Received {:?}", msg);
+
+                // TODO: Find a more elegant way of checking if the reader is empty
+                let mut dummy = [0u8];
+                if let Ok(_) = src.read_exact(&mut dummy) {
+                    debug!("Had leftover bytes after decoding message. Weird.",);
+                }
+
+                self.set_decoder_state(DecoderState::Header);
+
+                Ok(msg)
+            }
         }
     }
 }

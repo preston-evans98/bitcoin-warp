@@ -34,6 +34,7 @@ mod tests {
             "9595c9df90075148eb06860365df33584b75bff782a510c6cd4883a419833d50"
         )
     }
+    #[test]
     fn test_sha256d() {
         assert_eq!(
             hex::encode(sha256d(&b"hello".to_vec())),

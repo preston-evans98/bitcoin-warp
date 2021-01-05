@@ -1,5 +1,5 @@
 mod addr;
-pub use addr::Addr;
+pub use addr::{Addr, EncapsulatedAddr};
 
 mod block_txn;
 pub use block_txn::BlockTxn;
