@@ -3,64 +3,17 @@
 // use shared::Bytes;
 // use tokio::net::TcpStream;
 
-use crate::block_header::BlockHeader;
-use crate::messages::EncapsulatedAddr;
-use crate::transaction::Transaction;
-use crate::InventoryData;
-use serde_derive::{Deserializable, Serializable};
+use crate::types::{Nonce, PrefilledTransaction, ProtocolVersion, Services};
+use serde_derive::Serializable;
+use shared::BlockHeader;
+use shared::EncapsulatedAddr;
+use shared::InventoryData;
+use shared::Transaction;
 use shared::{u256, CompactInt};
 use std::net::SocketAddr;
-
-// #[derive(Serializable, Deserializable, Debug)]
-// pub struct EncapsulatedAddr {
-//     time: u32,
-//     services: u64,
-//     addr: SocketAddr,
-// }
-
-#[derive(Serializable, Deserializable, Debug)]
-pub struct PrefilledTransaction {
-    index: CompactInt,
-    pub tx: Transaction,
-}
-
-pub type Services = u64;
-pub type Nonce = u64;
-pub type Version = u32;
-
-// impl Deserializable for Services {
-//     fn deserialize<R>(reader: &mut R) -> Result<Self, shared::DeserializationError>
-//     where
-//         Self: Sized,
-//         R: std::io::Read,
-//     {
-//         let result = u64::deserialize(reader)?;
-//         Ok(result as Services)
-//     }
-// }
-
-// impl Deserializable for Nonce {
-//     fn deserialize<R>(reader: &mut R) -> Result<Self, shared::DeserializationError>
-//     where
-//         Self: Sized,
-//         R: std::io::Read,
-//     {
-//         todo!()
-//     }
-// }
-
-// impl Deserializable for Version {
-//     fn deserialize<R>(reader: &mut R) -> Result<Self, shared::DeserializationError>
-//     where
-//         Self: Sized,
-//         R: std::io::Read,
-//     {
-//         todo!()
-//     }
-// }
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serializable)]
-// #[derive(Debug, Serializable, Deserializable)]
 pub enum Message {
     Addr {
         addrs: Vec<EncapsulatedAddr>,
@@ -98,7 +51,7 @@ pub enum Message {
         indexes: Vec<CompactInt>,
     },
     GetBlocks {
-        protocol_version: Version,
+        protocol_version: ProtocolVersion,
         block_header_hashes: Vec<u256>,
         stop_hash: u256,
     },
@@ -106,7 +59,7 @@ pub enum Message {
         inventory: Vec<InventoryData>,
     },
     GetHeaders {
-        protocol_version: Version,
+        protocol_version: ProtocolVersion,
         block_header_hashes: Vec<u256>,
         stop_hash: u256,
     },
@@ -148,7 +101,7 @@ pub enum Message {
     },
     Verack {},
     Version {
-        protocol_version: Version,
+        protocol_version: ProtocolVersion,
         services: Services,
         timestamp: u64,
         receiver_services: Services,
@@ -160,4 +113,36 @@ pub enum Message {
         best_block: u32,
         relay: bool,
     },
+}
+
+impl Message {
+    pub fn version(
+        peer_ip: SocketAddr,
+        peer_services: u64,
+        daemon_ip: SocketAddr,
+        best_block: u32,
+        config: &config::Config,
+    ) -> Message {
+        Message::Version {
+            protocol_version: config.get_protocol_version(),
+            services: config.get_services(),
+            timestamp: secs_since_the_epoch(),
+            receiver_services: peer_services,
+            receiver: peer_ip,
+            transmitter_services: config.get_services(),
+            transmitter_ip: daemon_ip,
+            nonce: 0 as u64,
+            user_agent: Vec::new(),
+            best_block: best_block,
+            relay: true,
+        }
+    }
+}
+
+fn secs_since_the_epoch() -> u64 {
+    let start = SystemTime::now();
+    start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs_f64() as u64
 }

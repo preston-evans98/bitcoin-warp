@@ -1,10 +1,12 @@
-use crate::block_header::BlockHeader;
-use crate::header::Header;
-use crate::Transaction;
-use crate::{message::PrefilledTransaction, InventoryData, Message};
+use crate::message_header::MessageHeader;
+use crate::types::*;
+use crate::Message;
 use bytes::{BufMut, BytesMut};
+use shared::BlockHeader;
+use shared::EncapsulatedAddr;
 use shared::Serializable;
-use shared::{u256, CompactInt, Deserializable, DeserializationError};
+use shared::Transaction;
+use shared::{u256, CompactInt, Deserializable, DeserializationError, InventoryData};
 use tracing::{self, debug, trace};
 
 pub struct Codec {
@@ -48,7 +50,7 @@ impl tokio_util::codec::Encoder<Message> for Codec {
 
         // Preallocate vector
         let payload_size = self.get_serialized_size(&item);
-        dst.reserve(payload_size + Header::len());
+        dst.reserve(payload_size + MessageHeader::len());
         let initial_offset = dst.len();
         let mut target = dst.writer();
 
@@ -74,7 +76,7 @@ impl tokio_util::codec::Encoder<Message> for Codec {
 
 enum DecoderState {
     Header,
-    Body { header: Header },
+    Body { header: MessageHeader },
 }
 
 impl tokio_util::codec::Decoder for Codec {
@@ -85,14 +87,14 @@ impl tokio_util::codec::Decoder for Codec {
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         match self.state {
             DecoderState::Header => {
-                if src.len() < Header::len() {
+                if src.len() < MessageHeader::len() {
                     return Ok(None);
                 }
 
-                let reader = src.split_to(Header::len());
+                let reader = src.split_to(MessageHeader::len());
                 let mut reader = std::io::Cursor::new(reader);
 
-                let header = Header::deserialize(&mut reader, self.magic)?;
+                let header = MessageHeader::deserialize(&mut reader, self.magic)?;
                 self.set_decoder_state(DecoderState::Body { header });
 
                 // Recursively decode body
@@ -104,7 +106,7 @@ impl tokio_util::codec::Decoder for Codec {
                     return Ok(None);
                 }
 
-                let reader = src.split_to(Header::len());
+                let reader = src.split_to(MessageHeader::len());
                 let mut reader = std::io::Cursor::new(reader);
 
                 let contents = self.deserialize(&mut reader)?;
@@ -298,25 +300,25 @@ impl Codec {
             DecoderState::Body { ref header } => {
                 let msg = match header.get_command() {
                     crate::Command::Addr => {
-                        let addrs = Vec::<crate::messages::EncapsulatedAddr>::deserialize(src)?;
+                        let addrs = Vec::<EncapsulatedAddr>::deserialize(src)?;
                         Message::Addr { addrs }
                     }
                     crate::Command::Version => Message::Version {
-                        protocol_version: crate::message::Version::deserialize(src)?,
-                        services: crate::message::Services::deserialize(src)?,
+                        protocol_version: ProtocolVersion::deserialize(src)?,
+                        services: Services::deserialize(src)?,
                         timestamp: u64::deserialize(src)?,
-                        receiver_services: crate::message::Services::deserialize(src)?,
+                        receiver_services: Services::deserialize(src)?,
                         receiver: std::net::SocketAddr::deserialize(src)?,
-                        transmitter_services: crate::message::Services::deserialize(src)?,
+                        transmitter_services: Services::deserialize(src)?,
                         transmitter_ip: std::net::SocketAddr::deserialize(src)?,
-                        nonce: crate::message::Nonce::deserialize(src)?,
+                        nonce: Nonce::deserialize(src)?,
                         user_agent: <Vec<u8>>::deserialize(src)?,
                         best_block: u32::deserialize(src)?,
                         relay: bool::deserialize(src)?,
                     },
                     crate::Command::Verack => Message::Verack {},
                     crate::Command::GetBlocks => Message::GetBlocks {
-                        protocol_version: crate::message::Version::deserialize(src)?,
+                        protocol_version: ProtocolVersion::deserialize(src)?,
                         block_header_hashes: <Vec<u256>>::deserialize(src)?,
                         stop_hash: u256::deserialize(src)?,
                     },
@@ -328,7 +330,7 @@ impl Codec {
                         transactions: <Vec<Transaction>>::deserialize(src)?,
                     },
                     crate::Command::GetHeaders => Message::GetHeaders {
-                        protocol_version: crate::message::Version::deserialize(src)?,
+                        protocol_version: ProtocolVersion::deserialize(src)?,
                         block_header_hashes: <Vec<u256>>::deserialize(src)?,
                         stop_hash: u256::deserialize(src)?,
                     },
@@ -347,7 +349,7 @@ impl Codec {
                     },
                     crate::Command::CmpctBlock => Message::CompactBlock {
                         header: BlockHeader::deserialize(src)?,
-                        nonce: crate::message::Nonce::deserialize(src)?,
+                        nonce: Nonce::deserialize(src)?,
                         short_ids: <Vec<u64>>::deserialize(src)?,
                         prefilled_txns: <Vec<PrefilledTransaction>>::deserialize(src)?,
                     },
@@ -391,10 +393,10 @@ impl Codec {
                     },
                     crate::Command::GetAddr => Message::GetAddr {},
                     crate::Command::Ping => Message::Ping {
-                        nonce: crate::message::Nonce::deserialize(src)?,
+                        nonce: Nonce::deserialize(src)?,
                     },
                     crate::Command::Pong => Message::Pong {
-                        nonce: crate::message::Nonce::deserialize(src)?,
+                        nonce: Nonce::deserialize(src)?,
                     },
                     crate::Command::Reject => Message::Reject {
                         message: String::deserialize(src)?,

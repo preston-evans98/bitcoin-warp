@@ -4,116 +4,108 @@ pub use command::Command;
 mod message;
 pub use message::Message;
 
+mod types;
+
 mod codec;
 pub use codec::Codec;
 
-mod peer;
-pub use peer::{Peer, PeerError};
+// mod peer;
+// pub use peer::{Peer, PeerError};
+mod message_header;
 
-mod payload;
-pub use payload::Payload;
+// mod messages;
+// pub use messages::Addr;
+// pub use messages::Block;
+// pub use messages::BlockTxn;
+// pub use messages::CompactBlock;
+// pub use messages::FeeFilter;
+// pub use messages::FilterAdd;
+// pub use messages::FilterClear;
+// pub use messages::FilterLoad;
+// pub use messages::GetAddr;
+// pub use messages::GetBlockTxn;
+// pub use messages::GetBlocks;
+// pub use messages::GetData;
+// pub use messages::GetHeaders;
+// pub use messages::Headers;
+// pub use messages::Mempool;
+// pub use messages::MerkleBlock;
+// pub use messages::NotFound;
+// pub use messages::Ping;
+// pub use messages::Pong;
+// pub use messages::Reject;
+// pub use messages::SendCompact;
+// pub use messages::SendHeaders;
+// pub use messages::Tx;
+// pub use messages::Verack;
+// pub use messages::Version;
+// pub use messages::{Inv, InventoryData, InventoryType};
 
-mod header;
+// #[cfg(test)]
+// mod tests {
+//     use crate::header::Header;
+//     use crate::Command;
+//     use config::Config;
+//     use shared::Bytes;
+//     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+//     #[test]
+//     fn test_verack() {
+//         let header = Header::from_body(Config::mainnet().magic(), Command::Verack, &Vec::new());
+//         assert_eq!(
+//             Bytes::from(header.to_bytes()).hex(),
+//             "f9beb4d976657261636b000000000000000000005df6e0e2"
+//         )
+//     }
+//     use crate::Version;
 
-mod block_header;
-pub use block_header::{BlockHeader, Nbits};
+//     #[test]
+//     fn test_version_serialize() {
+//         use crate::payload::Payload;
+//         use shared::Serializable;
+//         let foreign_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8333);
+//         let local_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8333);
+//         let version = Version::new(
+//             foreign_address,
+//             01 as u64,
+//             local_address,
+//             0 as u32,
+//             &std::sync::Arc::new(Config::mainnet()),
+//         );
+//         let mut target = Vec::new();
+//         version.serialize(&mut target).unwrap();
+//         assert_eq!(version.to_bytes().unwrap(), target);
+//         // Peer::at_address(1, address, &Config::mainnet());
 
-mod transaction;
-pub use transaction::{CoinbaseInput, Transaction, TxInput, TxOutpoint, TxOutput};
+//         //peer_connect::outbound_connection();
+//         //println!("The connection returned: {:#?}",result);
+//     }
 
-mod messages;
-pub use messages::Addr;
-pub use messages::Block;
-pub use messages::BlockTxn;
-pub use messages::CompactBlock;
-pub use messages::FeeFilter;
-pub use messages::FilterAdd;
-pub use messages::FilterClear;
-pub use messages::FilterLoad;
-pub use messages::GetAddr;
-pub use messages::GetBlockTxn;
-pub use messages::GetBlocks;
-pub use messages::GetData;
-pub use messages::GetHeaders;
-pub use messages::Headers;
-pub use messages::Mempool;
-pub use messages::MerkleBlock;
-pub use messages::NotFound;
-pub use messages::Ping;
-pub use messages::Pong;
-pub use messages::Reject;
-pub use messages::SendCompact;
-pub use messages::SendHeaders;
-pub use messages::Tx;
-pub use messages::Verack;
-pub use messages::Version;
-pub use messages::{Inv, InventoryData, InventoryType};
+// #[test]
+// fn test_getblocks() {
+//     let mut message = Message::new();
+//     let mut conf = Config::mainnet();
+//     conf.set_protocol_version(70001 as u32);
+//     //message.create_header_for_body(Command::GetBlocks,&conf);
+//     message.create_getblocks_body(&vec![], true, &conf);
+//     assert_eq!(
+//         message.get_body().hex(),
+//         "71110100000000000000000000000000000000000000000000000000000000000000000000"
+//     )
+// }
 
-#[cfg(test)]
-mod tests {
-    use crate::header::Header;
-    use crate::Command;
-    use config::Config;
-    use shared::Bytes;
-    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-    #[test]
-    fn test_verack() {
-        let header = Header::from_body(Config::mainnet().magic(), Command::Verack, &Vec::new());
-        assert_eq!(
-            Bytes::from(header.to_bytes()).hex(),
-            "f9beb4d976657261636b000000000000000000005df6e0e2"
-        )
-    }
-    use crate::Version;
+// use std::net::Ipv4Addr;
+// #[test]
+// fn test_tcp_message() {
+//     let mut msg = Message::new();
+//         msg.create_version_body(&Config::mainnet());
+//         msg.create_header_for_body(Command::Version, &Config::mainnet());
+//         println!("{:?} {:?}",msg.dump_header(),msg.dump_body());
+//         println!("{:?}",msg.dump_contents());
+//         println!("{:?}",msg.get_contents().get_bytes());
 
-    #[test]
-    fn test_version_serialize() {
-        use crate::payload::Payload;
-        use shared::Serializable;
-        let foreign_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8333);
-        let local_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8333);
-        let version = Version::new(
-            foreign_address,
-            01 as u64,
-            local_address,
-            0 as u32,
-            &std::sync::Arc::new(Config::mainnet()),
-        );
-        let mut target = Vec::new();
-        version.serialize(&mut target).unwrap();
-        assert_eq!(version.to_bytes().unwrap(), target);
-        // Peer::at_address(1, address, &Config::mainnet());
-
-        //peer_connect::outbound_connection();
-        //println!("The connection returned: {:#?}",result);
-    }
-
-    // #[test]
-    // fn test_getblocks() {
-    //     let mut message = Message::new();
-    //     let mut conf = Config::mainnet();
-    //     conf.set_protocol_version(70001 as u32);
-    //     //message.create_header_for_body(Command::GetBlocks,&conf);
-    //     message.create_getblocks_body(&vec![], true, &conf);
-    //     assert_eq!(
-    //         message.get_body().hex(),
-    //         "71110100000000000000000000000000000000000000000000000000000000000000000000"
-    //     )
-    // }
-
-    // use std::net::Ipv4Addr;
-    // #[test]
-    // fn test_tcp_message() {
-    //     let mut msg = Message::new();
-    //         msg.create_version_body(&Config::mainnet());
-    //         msg.create_header_for_body(Command::Version, &Config::mainnet());
-    //         println!("{:?} {:?}",msg.dump_header(),msg.dump_body());
-    //         println!("{:?}",msg.dump_contents());
-    //         println!("{:?}",msg.get_contents().get_bytes());
-
-    //     assert_eq!(
-    //         msg.dump_body(),
-    //         "721101000100000000000000bc8f5e5400000000010000000000000000000000000000000000ffffc61b6409208d010000000000000000000000000000000000ffffcb0071c0208d128035cbc97953f80f2f5361746f7368693a302e392e332fcf05050001"
-    //     )
-    // }
-}
+//     assert_eq!(
+//         msg.dump_body(),
+//         "721101000100000000000000bc8f5e5400000000010000000000000000000000000000000000ffffc61b6409208d010000000000000000000000000000000000ffffcb0071c0208d128035cbc97953f80f2f5361746f7368693a302e392e332fcf05050001"
+//     )
+// }
+// }

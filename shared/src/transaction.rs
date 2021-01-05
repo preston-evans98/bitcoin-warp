@@ -1,5 +1,6 @@
+use crate as shared;
+use crate::{u256, CompactInt};
 use serde_derive::{Deserializable, Serializable};
-use shared::{u256, CompactInt};
 #[derive(Deserializable, Serializable, Debug)]
 pub struct Transaction {
     version: i32,

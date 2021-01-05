@@ -1,5 +1,4 @@
 use shared::{Deserializable, DeserializationError, Serializable};
-use DeserializationError::Parse;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
@@ -61,47 +60,6 @@ impl Command {
             Command::Pong => b"pong\0\0\0\0\0\0\0\0",
             Command::Reject => b"reject\0\0\0\0\0\0",
             Command::SendHeaders => b"sendheaders\0",
-        }
-    }
-    pub fn deserialize_body<R>(
-        &self,
-        msg: &mut R,
-    ) -> Result<Box<dyn crate::payload::Payload>, DeserializationError>
-    where
-        R: std::io::Read,
-    {
-        match self {
-            Command::Version => Ok(Box::new(crate::Version::deserialize(msg)?)),
-            Command::Verack => Ok(Box::new(crate::Verack::deserialize(msg)?)),
-            Command::GetBlocks => Ok(Box::new(crate::GetBlocks::deserialize(msg)?)),
-            Command::GetData => Ok(Box::new(crate::GetData::deserialize(msg)?)),
-            Command::Block => Ok(Box::new(crate::Block::deserialize(msg)?)),
-            Command::GetHeaders => Ok(Box::new(crate::GetHeaders::deserialize(msg)?)),
-            Command::BlockTxn => Ok(Box::new(crate::BlockTxn::deserialize(msg)?)),
-            Command::CmpctBlock => Ok(Box::new(crate::CompactBlock::deserialize(msg)?)),
-            Command::Headers => Ok(Box::new(crate::Headers::deserialize(msg)?)),
-            Command::Inv => Ok(Box::new(crate::Inv::deserialize(msg)?)),
-            Command::MemPool => Ok(Box::new(crate::Mempool::deserialize(msg)?)),
-            Command::MerkleBlock => Ok(Box::new(crate::MerkleBlock::deserialize(msg)?)),
-            Command::SendCmpct => Ok(Box::new(crate::SendCompact::deserialize(msg)?)),
-            Command::GetBlockTxn => Ok(Box::new(crate::GetBlockTxn::deserialize(msg)?)),
-            Command::NotFound => Ok(Box::new(crate::NotFound::deserialize(msg)?)),
-            Command::Tx => Ok(Box::new(crate::Tx::deserialize(msg)?)),
-            Command::Addr => Ok(Box::new(crate::Addr::deserialize(msg)?)),
-            // Command::Alert => println!("{:#?}", crate::Alert::deserialize(msg)?),
-            Command::FeeFilter => Ok(Box::new(crate::FeeFilter::deserialize(msg)?)),
-            Command::FilterAdd => Ok(Box::new(crate::FilterAdd::deserialize(msg)?)),
-            Command::FilterClear => Ok(Box::new(crate::FilterClear::deserialize(msg)?)),
-            Command::FilterLoad => Ok(Box::new(crate::FilterLoad::deserialize(msg)?)),
-            Command::GetAddr => Ok(Box::new(crate::GetAddr::deserialize(msg)?)),
-            Command::Ping => Ok(Box::new(crate::Ping::deserialize(msg)?)),
-            Command::Pong => Ok(Box::new(crate::Pong::deserialize(msg)?)),
-            // Command::Reject => Ok(Box::new(crate::Reject::deserialize(msg)?)),
-            Command::SendHeaders => Ok(Box::new(crate::SendHeaders::deserialize(msg)?)),
-            _ => Err(Parse(format!(
-                "Command::deserialize_body not implemented for {:?}",
-                self
-            ))),
         }
     }
 }

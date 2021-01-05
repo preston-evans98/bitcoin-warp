@@ -1,20 +1,20 @@
 use crate::command::Command;
-use serde_derive::{Deserializable, Serializable};
-use shared::{Deserializable, DeserializationError, Serializable};
+use serde_derive::Deserializable;
+use shared::{Deserializable, DeserializationError};
 
-#[derive(Deserializable, Serializable, Debug)]
-pub struct Header {
+#[derive(Deserializable, Debug)]
+pub struct MessageHeader {
     magic: u32,
     command: Command,
     payload_size: u32,
     checksum: [u8; 4],
 }
 
-impl Header {
+impl MessageHeader {
     pub fn deserialize<T>(
         target: &mut T,
         expected_magic: u32,
-    ) -> Result<Header, DeserializationError>
+    ) -> Result<MessageHeader, DeserializationError>
     where
         T: std::io::Read,
     {
@@ -25,7 +25,7 @@ impl Header {
         let command = Command::deserialize(target)?;
         let payload_size = u32::deserialize(target)?;
         let checksum = <[u8; 4]>::deserialize(target)?;
-        Ok(Header {
+        Ok(MessageHeader {
             magic,
             command,
             payload_size,
@@ -35,25 +35,11 @@ impl Header {
     pub fn get_command(&self) -> Command {
         self.command.clone()
     }
-    pub fn from_body(magic: u32, command: Command, body: &Vec<u8>) -> Header {
-        let hash = warp_crypto::double_sha256(body);
-        let checksum = [hash[0], hash[1], hash[2], hash[3]];
-        Header {
-            magic,
-            command,
-            payload_size: body.len() as u32,
-            checksum,
-        }
-    }
+
     pub fn get_payload_size(&self) -> usize {
         self.payload_size as usize
     }
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut result = Vec::with_capacity(24);
-        self.serialize(&mut result)
-            .expect("Serializing to vec should not fail!");
-        result
-    }
+
     pub fn len() -> usize {
         20
     }

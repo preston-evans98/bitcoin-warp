@@ -1,16 +1,28 @@
+use crate as shared;
+use crate::block_header::BlockHeader;
 use crate::transaction::Transaction;
+use crate::{CompactInt, Serializable};
 use serde_derive::{Deserializable, Serializable};
-use shared::Serializable;
-#[derive(Serializable, Deserializable, Debug)]
-pub struct BlockTxn {
-    block_hash: [u8; 32],
-    txs: Vec<Transaction>,
+#[derive(Deserializable, Serializable, Debug)]
+pub struct Block {
+    block_header: BlockHeader,
+    transactions: Vec<Transaction>,
 }
-impl crate::payload::Payload for BlockTxn {
+
+impl Block {
+    pub fn new(header: BlockHeader, txs: Vec<Transaction>) -> Block {
+        let message = Block {
+            block_header: header,
+            transactions: txs,
+        };
+        message
+    }
+}
+impl crate::payload::Payload for Block {
     fn serialized_size(&self) -> usize {
-        let mut size = 32;
-        size += shared::CompactInt::size(self.txs.len());
-        for transaction in self.txs.iter() {
+        let mut size = CompactInt::size(self.transactions.len());
+        size += BlockHeader::len();
+        for transaction in self.transactions.iter() {
             size += transaction.len();
         }
         size
@@ -23,28 +35,11 @@ impl crate::payload::Payload for BlockTxn {
 }
 
 #[test]
-fn serial_size_empty() {
+fn serial_size() {
     use crate::payload::Payload;
-    let txs = Vec::with_capacity(2);
-    let msg = BlockTxn {
-        block_hash: [1u8; 32],
-        txs,
-    };
-    let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-    assert_eq!(serial.len(), msg.serialized_size());
-    assert_eq!(serial.len(), serial.capacity())
-}
-
-#[test]
-fn serial_size_full() {
-    use crate::payload::Payload;
-    let previous_outpoint = crate::TxOutpoint::new(shared::u256::from(1), 438);
+    let previous_outpoint = crate::TxOutpoint::new(crate::u256::from(1), 438);
     let txin1 = crate::TxInput::new(previous_outpoint, Vec::from([8u8; 21]), 1);
-    let txin2 = crate::TxInput::new(
-        crate::TxOutpoint::new(shared::u256::new(), 0),
-        Vec::new(),
-        2,
-    );
+    let txin2 = crate::TxInput::new(crate::TxOutpoint::new(crate::u256::new(), 0), Vec::new(), 2);
     let mut txins = Vec::new();
     txins.push(txin1);
     txins.push(txin2);
@@ -59,9 +54,18 @@ fn serial_size_full() {
     let mut txs = Vec::with_capacity(2);
     txs.push(tx1);
     txs.push(tx2);
-    let msg = BlockTxn {
-        block_hash: [1u8; 32],
-        txs,
+    let block_header = BlockHeader::new(
+        23,
+        crate::u256::from(12345678),
+        crate::u256::from(9876543),
+        2342,
+        crate::block_header::Nbits::new(crate::u256::from(8719)),
+        99,
+    );
+
+    let msg = Block {
+        block_header,
+        transactions: txs,
     };
     let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
     assert_eq!(serial.len(), msg.serialized_size());

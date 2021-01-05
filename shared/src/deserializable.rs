@@ -85,32 +85,6 @@ macro_rules! impl_deser_primitive {
 
 impl_deser_primitive!(u16, u32, u64, i32, i64);
 
-// impl Deserializable for u32 {
-//     fn deserialize<R>(target: &mut R) -> Result<u32>
-//     where
-//         R: std::io::Read,
-//     {
-//         Ok(target.read_u32::<LittleEndian>()?)
-//     }
-// }
-
-// impl Deserializable for u64 {
-//     fn deserialize<R>(target: &mut R) -> Result<u64>
-//     where
-//         R: std::io::Read,
-//     {
-//         Ok(target.read_u64::<LittleEndian>()?)
-//     }
-// }
-// impl Deserializable for i64 {
-//     fn deserialize<R>(target: &mut R) -> Result<i64>
-//     where
-//         R: std::io::Read,
-//     {
-//         Ok(target.read_i64::<LittleEndian>()?)
-//     }
-// }
-
 impl<T> Deserializable for Vec<T>
 where
     T: Deserializable,

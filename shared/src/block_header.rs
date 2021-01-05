@@ -1,6 +1,7 @@
+use crate as shared;
+use crate::u256;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde_derive::{Deserializable, Serializable};
-use shared::u256;
 #[derive(Deserializable, Serializable, Debug)]
 pub struct BlockHeader {
     version: u32,
@@ -44,8 +45,8 @@ impl Nbits {
         Nbits { target }
     }
 }
-impl shared::Deserializable for Nbits {
-    fn deserialize<R>(target: &mut R) -> Result<Nbits, shared::DeserializationError>
+impl crate::Deserializable for Nbits {
+    fn deserialize<R>(target: &mut R) -> Result<Nbits, crate::DeserializationError>
     where
         R: std::io::Read,
     {
@@ -90,7 +91,7 @@ impl shared::Deserializable for Nbits {
         // })
     }
 }
-impl shared::Serializable for Nbits {
+impl crate::Serializable for Nbits {
     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
     where
         W: std::io::Write,
@@ -141,7 +142,7 @@ impl shared::Serializable for Nbits {
     }
 }
 
-// impl shared::Serializable for Nbits {
+// impl crate::Serializable for Nbits {
 //     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
 //     where
 //         W: std::io::Write,
@@ -204,7 +205,7 @@ impl shared::Serializable for Nbits {
 #[cfg(test)]
 #[test]
 fn deser_nbits_zero() {
-    use shared::{Deserializable, Serializable};
+    use crate::{Deserializable, Serializable};
     let encoded: u32 = 0x01003456;
     let mut input = Vec::with_capacity(4);
     encoded.serialize(&mut input).unwrap();
@@ -216,7 +217,7 @@ fn deser_nbits_zero() {
 
 #[test]
 fn deser_nbits_zero_2() {
-    use shared::{Deserializable, Serializable};
+    use crate::{Deserializable, Serializable};
     let encoded: u32 = 0;
     let mut input = Vec::with_capacity(4);
     encoded.serialize(&mut input).unwrap();
@@ -228,7 +229,7 @@ fn deser_nbits_zero_2() {
 
 #[test]
 fn ser_nbits_zero() {
-    use shared::Serializable;
+    use crate::Serializable;
     let target = u256::from(0x00);
     let nbits = Nbits::new(target);
     let mut out = Vec::with_capacity(4);
@@ -240,8 +241,8 @@ fn ser_nbits_zero() {
 
 #[test]
 fn deser_nbits_twelve() {
-    use shared::Deserializable;
-    use shared::Serializable;
+    use crate::Deserializable;
+    use crate::Serializable;
     let encoded: u32 = 0x01123456;
     let mut input = Vec::with_capacity(4);
     encoded.serialize(&mut input).unwrap();
@@ -253,7 +254,7 @@ fn deser_nbits_twelve() {
 
 #[test]
 fn ser_nbits_twelve() {
-    use shared::Serializable;
+    use crate::Serializable;
     let target = u256::from(0x12);
     let nbits = Nbits::new(target);
     let mut out = Vec::with_capacity(4);
@@ -266,8 +267,8 @@ fn ser_nbits_twelve() {
 
 #[test]
 fn deser_nbits_eighty() {
-    use shared::Deserializable;
-    use shared::Serializable;
+    use crate::Deserializable;
+    use crate::Serializable;
     let encoded: u32 = 0x02008000;
     let mut input = Vec::with_capacity(4);
     encoded.serialize(&mut input).unwrap();
@@ -279,7 +280,7 @@ fn deser_nbits_eighty() {
 
 #[test]
 fn ser_nbits_eighty() {
-    use shared::Serializable;
+    use crate::Serializable;
     let target = u256::from(0x80);
     let nbits = Nbits::new(target);
     let mut out = Vec::with_capacity(4);
@@ -293,8 +294,8 @@ fn ser_nbits_eighty() {
 // 0x05009234
 #[test]
 fn deser_nbits_big() {
-    use shared::Deserializable;
-    use shared::Serializable;
+    use crate::Deserializable;
+    use crate::Serializable;
     let encoded: u32 = 0x05009234;
     let mut input = Vec::with_capacity(4);
     encoded.serialize(&mut input).unwrap();
@@ -306,7 +307,7 @@ fn deser_nbits_big() {
 
 #[test]
 fn ser_nbits_big() {
-    use shared::Serializable;
+    use crate::Serializable;
     let target = u256::from(0x92340000);
     let nbits = Nbits::new(target);
     let mut out = Vec::with_capacity(4);
@@ -319,8 +320,8 @@ fn ser_nbits_big() {
 
 #[test]
 fn deser_nbits_neg() {
-    use shared::Deserializable;
-    use shared::Serializable;
+    use crate::Deserializable;
+    use crate::Serializable;
     let encoded: u32 = 0x04923456;
     let mut input = Vec::with_capacity(4);
     encoded.serialize(&mut input).unwrap();
@@ -332,8 +333,8 @@ fn deser_nbits_neg() {
 
 #[test]
 fn deser_nbits_nonneg() {
-    use shared::Deserializable;
-    use shared::Serializable;
+    use crate::Deserializable;
+    use crate::Serializable;
     let encoded: u32 = 0x04123456;
     let mut input = Vec::with_capacity(4);
     encoded.serialize(&mut input).unwrap();
@@ -345,7 +346,7 @@ fn deser_nbits_nonneg() {
 
 #[test]
 fn ser_nbits_noneg() {
-    use shared::Serializable;
+    use crate::Serializable;
     let target = u256::from(0x12345600);
     let nbits = Nbits::new(target);
     let mut out = Vec::with_capacity(4);
