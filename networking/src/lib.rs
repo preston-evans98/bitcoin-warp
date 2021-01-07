@@ -9,9 +9,11 @@ mod types;
 mod codec;
 pub use codec::Codec;
 
-// mod peer;
-// pub use peer::{Peer, PeerError};
+mod peer;
+pub use peer::{Peer, PeerError};
+
 mod message_header;
+pub use message_header::MessageHeader;
 
 // mod messages;
 // pub use messages::Addr;

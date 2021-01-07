@@ -1,10 +1,8 @@
 extern crate hex;
 extern crate serde_derive;
 use daemon::run_shell;
-use env_logger::Env;
 use serde_derive::{Deserializable, Serializable};
-use std::io::Write;
-
+use tracing_subscriber::{filter::LevelFilter, fmt};
 #[derive(Serializable, Deserializable, Debug)]
 pub struct MyTestStruct {
     identifier: u32,
@@ -48,9 +46,12 @@ pub struct MyTestStruct {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("debug"))
-        .format(|buf, record| writeln!(buf, "{}: {}", record.level(), record.args()))
-        .init();
+    // env_logger::Builder::from_env(Env::default().default_filter_or("debug"))
+    //     .format(|buf, record| writeln!(buf, "{}: {}", record.level(), record.args()))
+    //     .init();
+    let subscriber = fmt().with_max_level(LevelFilter::TRACE).finish();
+    let _ = tracing::subscriber::set_global_default(subscriber)
+        .map_err(|_err| eprintln!("Unable to set global default subscriber"));
     run_shell().await?;
     // // test();
 

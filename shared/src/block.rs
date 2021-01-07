@@ -17,8 +17,6 @@ impl Block {
         };
         message
     }
-}
-impl crate::payload::Payload for Block {
     fn serialized_size(&self) -> usize {
         let mut size = CompactInt::size(self.transactions.len());
         size += BlockHeader::len();
@@ -36,7 +34,6 @@ impl crate::payload::Payload for Block {
 
 #[test]
 fn serial_size() {
-    use crate::payload::Payload;
     let previous_outpoint = crate::TxOutpoint::new(crate::u256::from(1), 438);
     let txin1 = crate::TxInput::new(previous_outpoint, Vec::from([8u8; 21]), 1);
     let txin2 = crate::TxInput::new(crate::TxOutpoint::new(crate::u256::new(), 0), Vec::new(), 2);

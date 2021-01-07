@@ -19,8 +19,8 @@ pub use inventory_data::{InventoryData, InventoryType};
 mod block;
 pub use block::Block;
 
-mod payload;
-pub use payload::Payload;
+// mod payload;
+// pub use payload::Payload;
 
 mod block_header;
 pub use block_header::{BlockHeader, Nbits};

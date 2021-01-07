@@ -8,7 +8,7 @@ use shared::Serializable;
 use shared::Transaction;
 use shared::{u256, CompactInt, Deserializable, DeserializationError, InventoryData};
 use tracing::{self, debug, trace};
-
+#[derive(Debug)]
 pub struct Codec {
     magic: u32,
     state: DecoderState,
@@ -74,6 +74,7 @@ impl tokio_util::codec::Encoder<Message> for Codec {
     }
 }
 
+#[derive(Debug)]
 enum DecoderState {
     Header,
     Body { header: MessageHeader },
@@ -106,7 +107,7 @@ impl tokio_util::codec::Decoder for Codec {
                     return Ok(None);
                 }
 
-                let reader = src.split_to(MessageHeader::len());
+                let reader = src.split_to(header.get_payload_size());
                 let mut reader = std::io::Cursor::new(reader);
 
                 let contents = self.deserialize(&mut reader)?;
@@ -137,6 +138,12 @@ impl tokio_util::codec::Decoder for Codec {
 }
 
 impl Codec {
+    pub fn new(magic: u32) -> Codec {
+        Codec {
+            magic,
+            state: DecoderState::Header,
+        }
+    }
     fn set_decoder_state(&mut self, state: DecoderState) {
         self.state = state;
     }

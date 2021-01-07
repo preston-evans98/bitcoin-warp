@@ -4,6 +4,7 @@
 // use tokio::net::TcpStream;
 
 use crate::types::{Nonce, PrefilledTransaction, ProtocolVersion, Services};
+use crate::Command;
 use serde_derive::Serializable;
 use shared::BlockHeader;
 use shared::EncapsulatedAddr;
@@ -12,7 +13,6 @@ use shared::Transaction;
 use shared::{u256, CompactInt};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
-
 #[derive(Debug, Serializable)]
 pub enum Message {
     Addr {
@@ -135,6 +135,37 @@ impl Message {
             user_agent: Vec::new(),
             best_block: best_block,
             relay: true,
+        }
+    }
+
+    pub fn command(&self) -> Command {
+        match self {
+            Message::Addr { .. } => Command::Addr,
+            Message::BlockTxn { .. } => Command::BlockTxn,
+            Message::Block { .. } => Command::Block,
+            Message::CompactBlock { .. } => Command::CmpctBlock,
+            Message::FeeFilter { .. } => Command::FeeFilter,
+            Message::FilterAdd { .. } => Command::FilterAdd,
+            Message::FilterClear {} => Command::FilterClear,
+            Message::FilterLoad { .. } => Command::FilterLoad,
+            Message::GetAddr {} => Command::GetAddr,
+            Message::GetBlockTxn { .. } => Command::GetBlockTxn,
+            Message::GetBlocks { .. } => Command::GetBlocks,
+            Message::GetData { .. } => Command::GetData,
+            Message::GetHeaders { .. } => Command::GetHeaders,
+            Message::Headers { .. } => Command::Headers,
+            Message::Inv { .. } => Command::Inv,
+            Message::MemPool {} => Command::MemPool,
+            Message::MerkleBlock { .. } => Command::MerkleBlock,
+            Message::NotFound { .. } => Command::MemPool,
+            Message::Ping { .. } => Command::Ping,
+            Message::Pong { .. } => Command::Pong,
+            Message::Reject { .. } => Command::Reject,
+            Message::SendCompact { .. } => Command::SendCmpct,
+            Message::SendHeaders {} => Command::SendHeaders,
+            Message::Tx { .. } => Command::Tx,
+            Message::Verack {} => Command::Verack,
+            Message::Version { .. } => Command::Version,
         }
     }
 }

@@ -41,6 +41,6 @@ impl MessageHeader {
     }
 
     pub fn len() -> usize {
-        20
+        24
     }
 }

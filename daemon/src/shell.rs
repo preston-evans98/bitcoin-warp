@@ -1,6 +1,6 @@
 pub mod shell {
     use crate::Daemon;
-    use networking::Command;
+    use networking::Message;
     use networking::Peer;
     use std::io::BufRead;
     use std::io::Write;
@@ -73,12 +73,12 @@ pub mod shell {
                         }
                         "Version" | "version" =>  {
                             write_prompt("  Sending... ");
-                            peer.send(Command::Version, peer.create_version_msg(None)).await.unwrap();
+                            peer.send(peer.create_version_msg(None)).await.unwrap();
                             write_prompt("Done\n\n");
                         }
                         "Verack" | "verack" =>  {
                             write_prompt("  Sending... ");
-                            peer.send(Command::Verack, networking::Verack{}).await.unwrap();
+                            peer.send(Message::Verack{}).await.unwrap();
                             write_prompt("  Done\n\n");
                         }
                         _ => {
