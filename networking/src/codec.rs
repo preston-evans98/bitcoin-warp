@@ -1,6 +1,7 @@
 use crate::message_header::MessageHeader;
 use crate::types::*;
 use crate::Message;
+use byteorder::WriteBytesExt;
 use bytes::{BufMut, BytesMut};
 use shared::BlockHeader;
 use shared::EncapsulatedAddr;
@@ -18,38 +19,11 @@ impl tokio_util::codec::Encoder<Message> for Codec {
     type Error = std::io::Error;
 
     fn encode(&mut self, item: Message, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let cmd: &[u8; 12] = match item {
-            Message::Version { .. } => b"version\0\0\0\0\0",
-            Message::Verack { .. } => b"verack\0\0\0\0\0\0",
-            Message::GetBlocks { .. } => b"getblocks\0\0\0",
-            Message::GetData { .. } => b"getdata\0\0\0\0\0",
-            Message::Block { .. } => b"block\0\0\0\0\0\0\0",
-            Message::GetHeaders { .. } => b"getheaders\0\0",
-            Message::BlockTxn { .. } => b"blocktxn\0\0\0\0",
-            Message::CompactBlock { .. } => b"cmpctblock\0\0",
-            Message::Headers { .. } => b"headers\0\0\0\0\0",
-            Message::Inv { .. } => b"inv\0\0\0\0\0\0\0\0\0",
-            Message::MemPool { .. } => b"mempool\0\0\0\0\0",
-            Message::MerkleBlock { .. } => b"merkleblock\0",
-            Message::SendCompact { .. } => b"sendcmpct\0\0\0",
-            Message::GetBlockTxn { .. } => b"getblocktxn\0",
-            Message::NotFound { .. } => b"notfound\0\0\0\0",
-            Message::Tx { .. } => b"tx\0\0\0\0\0\0\0\0\0\0",
-            Message::Addr { .. } => b"addr\0\0\0\0\0\0\0\0",
-            // Message::Alert { .. } => b"alert\0\0\0\0\0\0\0",
-            Message::FeeFilter { .. } => b"feefilter\0\0\0",
-            Message::FilterAdd { .. } => b"filteradd\0\0\0",
-            Message::FilterClear { .. } => b"filterclear\0",
-            Message::FilterLoad { .. } => b"filterload\0\0",
-            Message::GetAddr { .. } => b"getaddr\0\0\0\0\0",
-            Message::Ping { .. } => b"ping\0\0\0\0\0\0\0\0",
-            Message::Pong { .. } => b"pong\0\0\0\0\0\0\0\0",
-            Message::Reject { .. } => b"reject\0\0\0\0\0\0",
-            Message::SendHeaders { .. } => b"sendheaders\0",
-        };
+        let cmd = item.command();
+        let cmd: &[u8; 12] = cmd.bytes();
 
-        // Preallocate vector
-        let payload_size = self.get_serialized_size(&item);
+        // Reserve space
+        let payload_size = Codec::get_serialized_size(&item);
         dst.reserve(payload_size + MessageHeader::len());
         let initial_offset = dst.len();
         let mut target = dst.writer();
@@ -62,10 +36,8 @@ impl tokio_util::codec::Encoder<Message> for Codec {
         let start_payload = start_checksum + 4;
         [0u8; 4].serialize(&mut target)?;
 
-        // Serialize the message. Some messages will likely need non-default serialization
-        match item {
-            _ => item.serialize(&mut target)?,
-        }
+        // Serialize the message body. Some messages need non-default serialization, so use a custom Codec method
+        self.serialize_body(&item, &mut target)?;
 
         // Fill in the checksum
         let checksum = warp_crypto::sha256d(&dst[start_payload..(start_payload + payload_size)]);
@@ -147,8 +119,8 @@ impl Codec {
     fn set_decoder_state(&mut self, state: DecoderState) {
         self.state = state;
     }
-
-    fn get_serialized_size(&self, msg: &Message) -> usize {
+    /// Returns the size of message (excluding the header) after serialization
+    fn get_serialized_size(msg: &Message) -> usize {
         match msg {
             Message::Addr { ref addrs } => {
                 CompactInt::size(addrs.len()) + addrs.len() * (4 + 8 + 18)
@@ -179,7 +151,7 @@ impl Codec {
                     + 8 * short_ids.len()
                     + CompactInt::size(prefilled_txns.len())
                     + prefilled_txns.iter().fold(0, |total, pre_tx| {
-                        let txn_len = pre_tx.tx.len();
+                        let txn_len = pre_tx.tx().len();
                         total + txn_len + CompactInt::size(txn_len)
                     })
             }
@@ -201,9 +173,10 @@ impl Codec {
                 block_hash: _,
                 ref indexes,
             } => {
-                32 + indexes.iter().fold(0, |total, index| {
-                    total + CompactInt::size(index.value() as usize)
-                })
+                32 + CompactInt::size(indexes.len())
+                    + indexes.iter().fold(0, |total, index| {
+                        total + CompactInt::size(index.value() as usize)
+                    })
             }
             Message::GetBlocks {
                 protocol_version: _,
@@ -231,7 +204,7 @@ impl Codec {
                     + 32
             }
             Message::Headers { ref headers } => {
-                headers.len() * (BlockHeader::len() + 1) + CompactInt::size(headers.len())
+                (headers.len() * (BlockHeader::len() + 1)) + CompactInt::size(headers.len())
             }
             Message::Inv { ref inventory } => {
                 let mut size = CompactInt::size(inventory.len());
@@ -294,6 +267,26 @@ impl Codec {
         }
     }
 
+    fn serialize_body<W: std::io::Write>(
+        &self,
+        item: &Message,
+        target: &mut W,
+    ) -> Result<(), std::io::Error> {
+        match item {
+            // Custom 'Headers' serialization is necessary to account for extra Transaction count field.
+            // Note that transaction count is always zero in a headers message.
+            Message::Headers { ref headers } => {
+                shared::CompactInt::from(headers.len()).serialize(target)?;
+                for item in headers.iter() {
+                    item.serialize(target)?;
+                    target.write_u8(0)?;
+                }
+            }
+            _ => item.serialize(target)?,
+        }
+        Ok(())
+    }
+
     fn deserialize<R: std::io::Read>(
         &mut self,
         src: &mut R,
@@ -341,9 +334,17 @@ impl Codec {
                         block_header_hashes: <Vec<u256>>::deserialize(src)?,
                         stop_hash: u256::deserialize(src)?,
                     },
-                    crate::Command::Headers => Message::Headers {
-                        headers: <Vec<BlockHeader>>::deserialize(src)?,
-                    },
+                    crate::Command::Headers => {
+                        // Custom deserialization necessary to account for extra
+                        // Transaction count field. Note that transaction count is always zero in a headers message.
+                        let count = CompactInt::deserialize(src)?;
+                        let mut result = Vec::with_capacity(count.value() as usize);
+                        for _ in 0..result.len() {
+                            result.push(BlockHeader::deserialize(src)?);
+                            let _ = u8::deserialize(src)?;
+                        }
+                        Message::Headers { headers: result }
+                    }
                     crate::Command::Inv => Message::Inv {
                         inventory: <Vec<InventoryData>>::deserialize(src)?,
                     },
@@ -427,5 +428,501 @@ impl Codec {
                 Ok(msg)
             }
         }
+    }
+}
+
+// These are legacy tests copied and pasted the previous implementation.
+// Each test was designed to check a particular struct implementing the trait Payload
+// (now each of these structs has become a Message variant)
+// TODO: Refactor to...
+//    - Replace manual creation of each variant with something automated
+//    - Consolidate into fewer tests
+//    - Remove wrappers over Codec functionality (msg.to_bytes(), msg.serialized_size())
+#[cfg(test)]
+mod message_size_tests {
+    use crate::types::PrefilledTransaction;
+    use crate::{
+        Codec,
+        Message::{self, *},
+    };
+    use bytes::{BufMut, BytesMut};
+    use shared::EncapsulatedAddr;
+    use shared::{BlockHeader, Transaction};
+
+    impl Message {
+        fn to_bytes(&self) -> Result<BytesMut, std::io::Error> {
+            // let mut out = Vec::with_capacity(codec.get_serialized_size(&self));
+            let codec = Codec::new(0);
+            let out = BytesMut::with_capacity(Codec::get_serialized_size(&self));
+            let mut out = out.writer();
+            let _ = codec.serialize_body(&self, &mut out)?;
+            Ok(out.into_inner())
+        }
+        fn serialized_size(&self) -> usize {
+            Codec::get_serialized_size(self)
+        }
+    }
+
+    #[test]
+    fn addr_serial_size() {
+        let addr1 = EncapsulatedAddr::new(1, 1, ([192, 168, 0, 1], 8333).into());
+        let addr2 = EncapsulatedAddr::new(1, 1, ([192, 168, 0, 1], 8333).into());
+        let mut addrs = Vec::with_capacity(2);
+        addrs.push(addr1);
+        addrs.push(addr2);
+        let msg = Addr { addrs };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn blocktxn_serial_size_empty() {
+        let txs = Vec::with_capacity(2);
+        let msg = BlockTxn {
+            block_hash: [1u8; 32],
+            txs,
+        };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+
+    #[test]
+    fn blocktxn_serial_size_full() {
+        let previous_outpoint = shared::TxOutpoint::new(shared::u256::from(1), 438);
+        let txin1 = shared::TxInput::new(previous_outpoint, Vec::from([8u8; 21]), 1);
+        let txin2 = shared::TxInput::new(
+            shared::TxOutpoint::new(shared::u256::new(), 0),
+            Vec::new(),
+            2,
+        );
+        let mut txins = Vec::new();
+        txins.push(txin1);
+        txins.push(txin2);
+        let mut outputs = Vec::new();
+        let out1 = shared::TxOutput::new(1, Vec::from([3u8; 11]));
+        let out2 = shared::TxOutput::new(0, Vec::new());
+        outputs.push(out1);
+        outputs.push(out2);
+        let tx1 = shared::Transaction::new(0, txins, outputs);
+        let tx2 = shared::Transaction::new(1, Vec::new(), Vec::new());
+
+        let mut txs = Vec::with_capacity(2);
+        txs.push(tx1);
+        txs.push(tx2);
+        let msg = BlockTxn {
+            block_hash: [1u8; 32],
+            txs,
+        };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn block_serial_size() {
+        let previous_outpoint = shared::TxOutpoint::new(shared::u256::from(1), 438);
+        let txin1 = shared::TxInput::new(previous_outpoint, Vec::from([8u8; 21]), 1);
+        let txin2 = shared::TxInput::new(
+            shared::TxOutpoint::new(shared::u256::new(), 0),
+            Vec::new(),
+            2,
+        );
+        let mut txins = Vec::new();
+        txins.push(txin1);
+        txins.push(txin2);
+        let mut outputs = Vec::new();
+        let out1 = shared::TxOutput::new(1, Vec::from([3u8; 11]));
+        let out2 = shared::TxOutput::new(0, Vec::new());
+        outputs.push(out1);
+        outputs.push(out2);
+        let tx1 = shared::Transaction::new(0, txins, outputs);
+        let tx2 = shared::Transaction::new(1, Vec::new(), Vec::new());
+
+        let mut txs = Vec::with_capacity(2);
+        txs.push(tx1);
+        txs.push(tx2);
+        let block_header = shared::BlockHeader::new(
+            23,
+            shared::u256::from(12345678),
+            shared::u256::from(9876543),
+            2342,
+            shared::Nbits::new(shared::u256::from(8719)),
+            99,
+        );
+
+        let msg = Block {
+            block_header,
+            transactions: txs,
+        };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+
+    #[test]
+    fn compact_block_serial_size() {
+        let previous_outpoint = shared::TxOutpoint::new(shared::u256::from(1), 438);
+        let txin1 = shared::TxInput::new(previous_outpoint, Vec::from([8u8; 21]), 1);
+        let txin2 = shared::TxInput::new(
+            shared::TxOutpoint::new(shared::u256::new(), 0),
+            Vec::new(),
+            2,
+        );
+        let mut txins = Vec::new();
+        txins.push(txin1);
+        txins.push(txin2);
+        let mut outputs = Vec::new();
+        let out1 = shared::TxOutput::new(1, Vec::from([3u8; 11]));
+        let out2 = shared::TxOutput::new(0, Vec::new());
+        outputs.push(out1);
+        outputs.push(out2);
+        let tx1 = PrefilledTransaction::new(
+            shared::CompactInt::from(1),
+            shared::Transaction::new(0, txins, outputs),
+        );
+        let tx2 = PrefilledTransaction::new(
+            shared::CompactInt::from(1),
+            Transaction::new(1, Vec::new(), Vec::new()),
+        );
+
+        let mut txs = Vec::with_capacity(2);
+        txs.push(tx1);
+        txs.push(tx2);
+        let header = BlockHeader::new(
+            23,
+            shared::u256::from(12345678),
+            shared::u256::from(9876543),
+            2342,
+            shared::Nbits::new(shared::u256::from(8719)),
+            99,
+        );
+
+        let msg = CompactBlock {
+            header,
+            nonce: 1928712,
+            short_ids: Vec::from([8219u64; 7]),
+            prefilled_txns: txs,
+        };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn feefilter_serial_size() {
+        let msg = FeeFilter { feerate: 34567 };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn filteradd_serial_size() {
+        let inner1 = Vec::from([1u8; 32]);
+        let inner2 = Vec::from([7u8; 11]);
+        let outer = Vec::from([inner1, inner2]);
+        let msg = FilterAdd { elements: outer };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn filterclear_serial_size() {
+        let msg = FilterClear {};
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn filterload_serial_size() {
+        let msg = FilterLoad {
+            filter: Vec::from([23u8; 22]),
+            n_hash_funcs: 0x129381,
+            n_tweak: 0xf2391381,
+            n_flags: 32,
+        };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn get_addr_serial_size() {
+        let msg = GetAddr {};
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn get_block_txn_serial_size() {
+        use shared::CompactInt;
+        let int1 = CompactInt::from(567892322);
+        let int2 = CompactInt::from(7892322);
+        let int3 = CompactInt::from(0);
+        let msg = GetBlockTxn {
+            block_hash: [242u8; 32],
+            indexes: Vec::from([int1, int2, int3]),
+        };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn get_blocks_serial_size() {
+        use shared::u256;
+        let int1 = u256::from(567892322);
+        let int2 = u256::from(7892322);
+        let int3 = u256::from(1);
+        let msg = GetBlocks {
+            protocol_version: 32371,
+            block_header_hashes: Vec::from([int1, int2, int3]),
+            stop_hash: u256::new(),
+        };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+
+    #[test]
+    fn get_data_serial_size() {
+        use shared::u256;
+        use shared::InventoryData;
+        use shared::InventoryType;
+        let int1 = u256::from(567892322);
+        let int2 = u256::from(7892322);
+        let int3 = u256::from(0);
+        let t1 = InventoryType::FilteredBlock;
+        let t2 = InventoryType::WitnessBlock;
+        let t3 = InventoryType::Tx;
+        let d1 = InventoryData {
+            inventory_type: t1,
+            hash: int1,
+        };
+        let d2 = InventoryData {
+            inventory_type: t2,
+            hash: int2,
+        };
+        let d3 = InventoryData {
+            inventory_type: t3,
+            hash: int3,
+        };
+
+        let inventory = Vec::from([d1, d2, d3]);
+        let msg = GetData { inventory };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn get_headers_serial_size() {
+        use shared::u256;
+        let int1 = u256::from(567892322);
+        let int2 = u256::from(7892322);
+        let int3 = u256::from(1);
+        let msg = GetHeaders {
+            protocol_version: 32371,
+            block_header_hashes: Vec::from([int1, int2, int3]),
+            stop_hash: u256::new(),
+        };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn headers_serial_size() {
+        let h1 = BlockHeader::new(
+            23,
+            shared::u256::from(12345678),
+            shared::u256::from(9876543),
+            2342,
+            shared::Nbits::new(shared::u256::from(8719)),
+            99,
+        );
+        let h2 = BlockHeader::new(
+            0,
+            shared::u256::from(2),
+            shared::u256::from(88),
+            2198321,
+            shared::Nbits::new(shared::u256::from(0xf32231)),
+            82,
+        );
+
+        let headers = Vec::from([h1, h2]);
+
+        let msg = Headers { headers };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn inv_serial_size() {
+        use shared::u256;
+        use shared::{InventoryData, InventoryType};
+        let int1 = u256::from(567892322);
+        let int2 = u256::from(7892322);
+        let int3 = u256::from(0);
+        let t1 = InventoryType::FilteredBlock;
+        let t2 = InventoryType::WitnessBlock;
+        let t3 = InventoryType::Tx;
+        let d1 = InventoryData {
+            inventory_type: t1,
+            hash: int1,
+        };
+        let d2 = InventoryData {
+            inventory_type: t2,
+            hash: int2,
+        };
+        let d3 = InventoryData {
+            inventory_type: t3,
+            hash: int3,
+        };
+
+        let inventory = Vec::from([d1, d2, d3]);
+        let msg = Inv { inventory };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn mempool_serial_size() {
+        let msg = MemPool {};
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn merkle_block_serial_size() {
+        use shared::u256;
+        let int1 = u256::from(567892322);
+        let int2 = u256::from(7892322);
+        let int3 = u256::from(1);
+        let block_header = BlockHeader::new(
+            23,
+            shared::u256::from(12345678),
+            shared::u256::from(9876543),
+            2342,
+            shared::Nbits::new(u256::from(8719)),
+            99,
+        );
+
+        let msg = MerkleBlock {
+            block_header,
+            transaction_count: 113,
+            hashes: vec![int1, int2, int3],
+            flags: Vec::from([232u8, 11]),
+        };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+
+    #[test]
+    fn not_found_serial_size() {
+        use shared::u256;
+        use shared::{InventoryData, InventoryType};
+        let int1 = u256::from(567892322);
+        let int2 = u256::from(7892322);
+        let int3 = u256::from(0);
+        let t1 = InventoryType::FilteredBlock;
+        let t2 = InventoryType::WitnessBlock;
+        let t3 = InventoryType::Tx;
+        let d1 = InventoryData {
+            inventory_type: t1,
+            hash: int1,
+        };
+        let d2 = InventoryData {
+            inventory_type: t2,
+            hash: int2,
+        };
+        let d3 = InventoryData {
+            inventory_type: t3,
+            hash: int3,
+        };
+
+        let inventory = Vec::from([d1, d2, d3]);
+        let msg = NotFound {
+            inventory_data: inventory,
+        };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+
+    #[test]
+    fn ping_serial_size() {
+        let msg = Ping { nonce: 34567 };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+
+    #[test]
+    fn pong_serial_size() {
+        let msg = Pong { nonce: 34567 };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+
+    #[test]
+    fn send_compact_serial_size() {
+        let msg = SendCompact {
+            announce: true,
+            version: 32381,
+        };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+
+    #[test]
+    fn send_headers_serial_size() {
+        let msg = SendHeaders {};
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+
+    #[test]
+    fn tx_serial_size() {
+        let previous_outpoint = shared::TxOutpoint::new(shared::u256::from(1), 438);
+        let txin1 = shared::TxInput::new(previous_outpoint, Vec::from([8u8; 21]), 1);
+        let txin2 = shared::TxInput::new(
+            shared::TxOutpoint::new(shared::u256::new(), 0),
+            Vec::new(),
+            2,
+        );
+        let mut txins = Vec::new();
+        txins.push(txin1);
+        txins.push(txin2);
+        let mut outputs = Vec::new();
+        let out1 = shared::TxOutput::new(1, Vec::from([3u8; 11]));
+        let out2 = shared::TxOutput::new(0, Vec::new());
+        outputs.push(out1);
+        outputs.push(out2);
+        let tx = Transaction::new(0, txins, outputs);
+
+        let msg = Tx { transaction: tx };
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+
+    #[test]
+    fn verack_serial_size() {
+        let msg = Verack {};
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
+    }
+    #[test]
+    fn version_serial_size() {
+        let msg = Message::version(
+            ([192, 168, 0, 1], 8333).into(),
+            2371,
+            ([192, 168, 0, 2], 8333).into(),
+            0x2329381,
+            &config::Config::mainnet(),
+        );
+        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
+        assert_eq!(serial.len(), msg.serialized_size());
+        assert_eq!(serial.len(), serial.capacity())
     }
 }

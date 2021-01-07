@@ -9,6 +9,16 @@ pub struct EncapsulatedAddr {
     addr: SocketAddr,
 }
 
+impl EncapsulatedAddr {
+    pub fn new(time: u32, services: u64, addr: SocketAddr) -> EncapsulatedAddr {
+        EncapsulatedAddr {
+            time,
+            services,
+            addr,
+        }
+    }
+}
+
 impl Serializable for EncapsulatedAddr {
     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
     where
