@@ -1,4 +1,4 @@
-use crate::{command::Command, Codec, Message};
+use crate::{command::Command, BitcoinCodec, Message};
 use config::Config;
 use futures::prelude::*;
 use shared::DeserializationError;
@@ -13,6 +13,7 @@ use tracing::{info, span::Span, trace, trace_span};
 
 type Result<T> = std::result::Result<T, PeerError>;
 
+/// An enumeration of errors that a Peer connection can encounter, including malicious behavior.
 #[derive(Debug)]
 pub enum PeerError {
     Timeout(String),
@@ -51,6 +52,11 @@ impl fmt::Display for PeerError {
     }
 }
 
+/// A [`tower::Service`](https://docs.rs/tower/0.4.1/tower/trait.Service.html) representing an individual peer.
+///
+/// Relies on a backing `NodeDataStore` [`Service`](https://docs.rs/tower/0.4.1/tower/trait.Service.html) to obtain block and transaction information.
+/// If the `NodeDataStore` polls unready, this information will be propagated to the `ConnectionManager` struct, which may drop the the corresponding peer
+/// to relieve backpressure.
 #[derive(Debug)]
 pub struct Peer {
     peer_id: usize,
@@ -59,7 +65,7 @@ pub struct Peer {
     daemon_address: SocketAddr,
     daemon_protocol_version: u32,
     services: u64,
-    connection: Framed<TcpStream, Codec>,
+    connection: Framed<TcpStream, BitcoinCodec>,
     config: Arc<Config>,
     span: Span,
 }
@@ -68,7 +74,7 @@ impl Peer {
     pub async fn at_address(id: usize, address: SocketAddr, config: Arc<Config>) -> Result<Peer> {
         info!("Peer {}: Opening connection to {:?}...", id, address.ip());
         let connection = timeout(Duration::from_secs(5), TcpStream::connect(address)).await??;
-        let codec = Codec::new(config.magic());
+        let codec = BitcoinCodec::new(config.magic());
         info!("Peer {}: Connected", id);
         Ok(Peer {
             peer_id: id,
@@ -85,7 +91,7 @@ impl Peer {
         })
     }
     pub async fn from_connection(id: usize, connection: TcpStream, config: Arc<Config>) -> Peer {
-        let codec = Codec::new(config.magic());
+        let codec = BitcoinCodec::new(config.magic());
         info!("Receiving from {:?}", connection.peer_addr());
         Peer {
             peer_id: id,
@@ -115,18 +121,6 @@ impl Peer {
     pub fn get_best_block(&self) -> u32 {
         0
     }
-    // pub fn get_block_hashes(&self) -> Vec<u256> {
-    //     Vec::new()
-    //     //One or more block header hashes (32 bytes each) in internal byte order.
-    //     //Hashes should be provided in reverse order of block height,
-    //     //so highest-height hashes are listed first and lowest-height hashes are listed last.
-    //     //should get from the database the block headers needed and hash them here and put them in a vector
-    // }
-    // pub fn get_inventory_data(&self) -> Vec<InventoryData> {
-    //     //needs to get the actual data that we want to request from peer and put it in an InventoryData object
-    //     Vec::new()
-    // }
-
     pub async fn receive(&mut self, _timeout_duration: Option<Duration>) -> Result<Message> {
         let result = match self.connection.next().await {
             None => Err(PeerError::ConnectionClosed),

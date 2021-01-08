@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-daemon = { path = "daemon" }
+warpd = { path = "warpd" }
 config = { path = "config" }
 networking = { path = "networking" }
 shared = { path = "shared" }
@@ -20,12 +20,13 @@ tracing = "0.1.22"
 
 [[bin]]
 name = "main"
-path = "daemon/src/bin/main.rs"
+path = "warpd/src/bin/main.rs"
+
 
 [workspace]
 members = [
     "networking",
-    "daemon",
+    "warpd",
     "shared", 
     "config", 
     "crypto", 

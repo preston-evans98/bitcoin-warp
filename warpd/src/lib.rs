@@ -1,15 +1,30 @@
+//! ![BitcoinWarp Logo](/Users/prestonevans/Downloads/BitcoinWarpLogoMock.png)
+//! Welcome to Bitcoin Warp, an ongoing implementation of a new Bitcoin Client in Rust.
+//!
+//! Bitcoin Warp is a work in progress.  It is developed as a collection of
+//! libraries implementing the different components of a Bitcoin node (networking,
+//! cryptography, shared primitives, etc.), and a `warpd` binary which uses them. Expect the structure
+//! of this project to change very frequently up until the 1.0 release.
+//!
+//! Almost all of our work so far has gone into `networking`, an implementation of the Bitcoin Wire Protocol
+//! inspired by [Zcash Zebra's](https://doc.zebra.zfnd.org) new networking stack.
+//! However, many of the core components of the `shared` library have also begun to stabilize.
+
 mod shell;
 use config::Config;
 use networking::{Peer, PeerError};
 pub use shell::shell::run_shell;
 use std::net::SocketAddr;
 use std::sync::Arc;
+
+/// The Bitcoin Warp Daemon
 #[derive(Debug)]
-pub struct Daemon {
+pub struct Warpd {
     pub config: Arc<Config>,
     conn_man: ConnectionManager,
 }
 
+/// An initial pass at a connection manager. Soon to be deprecated. Its replacement will live in the `networking` crate.
 #[derive(Debug)]
 pub struct ConnectionManager {
     peers: Vec<Peer>,
@@ -44,9 +59,9 @@ impl ConnectionManager {
 //     services: u64,
 // }
 
-impl Daemon {
-    pub fn new() -> Daemon {
-        Daemon {
+impl Warpd {
+    pub fn new() -> Warpd {
+        Warpd {
             config: Arc::new(Config::mainnet()),
             conn_man: ConnectionManager::new(),
         }

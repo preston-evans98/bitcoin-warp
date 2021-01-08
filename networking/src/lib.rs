@@ -1,3 +1,16 @@
+//!
+//! This Library provides
+//! 1. a low level implementation of the Bitcoin Wire Protocol (the [`Message`] struct combined with [`BitcoinCodec`](crate::BitcoinCodec)).  (✅ Completed)
+//! 1. a high level system encapsulating 'the rest of the network' as a [`tower::Service`](https://docs.rs/tower/0.4.1/tower/trait.Service.html).  (🟨 Work in Progress)
+//!
+//! # Overview
+//! Following [Zcash Zebra](https://doc.zebra.zfnd.org/zebrad/), we intend to build a stateful Request/Response protocol on top of the existing Wire Protocol and encapsulate
+//! the Bitcoin Network into a single service (or small [collection of Services](https://github.com/ZcashFoundation/zebra/blob/main/zebra-network/src/peer_set/set.rs)).
+//! To obtain block and transaction information, a caller (in our case, [`warpd`](super::Warpd)) simply passes the relevant Service
+//! a high-level Request object specifying the information to be fetched (i.e. Blocks, Headers, etc.), and the
+//! Services automatically load balance these requests across available peers. Work in this direction in ongoing.
+//! For now, users of the library can use the [`BitcoinCodec`] to easily turn any TcpStream into a stream of Bitcoin [`Message`s](crate::Message).
+//!
 mod command;
 pub use command::Command;
 
@@ -7,13 +20,15 @@ pub use message::Message;
 mod types;
 
 mod codec;
-pub use codec::Codec;
+pub use codec::Codec as BitcoinCodec;
 
 mod peer;
 pub use peer::{Peer, PeerError};
 
 mod message_header;
 pub use message_header::MessageHeader;
+
+mod server;
 
 // mod messages;
 // pub use messages::Addr;

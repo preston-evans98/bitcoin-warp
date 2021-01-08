@@ -1,5 +1,6 @@
 use shared::{Deserializable, DeserializationError, Serializable};
 
+/// A shorthand way of referring to a type of [Message](crate::Message). A `Command` is a single byte, while a [Message](crate::Message) is about 90 bytes.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Command {
     Version,

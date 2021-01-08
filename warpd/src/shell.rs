@@ -1,5 +1,5 @@
 pub mod shell {
-    use crate::Daemon;
+    use crate::Warpd;
     use networking::Message;
     use networking::Peer;
     use std::io::BufRead;
@@ -112,7 +112,7 @@ pub mod shell {
         mut rx: tokio::sync::mpsc::UnboundedReceiver<String>,
         quitter: tokio::sync::oneshot::Sender<()>,
     ) {
-        let mut daemon = Daemon::new();
+        let mut warpd = Warpd::new();
         print!("          <Welcome to ");
         loop {
             write_prompt("warp shell>");
@@ -136,18 +136,18 @@ pub mod shell {
                     let input = rx.recv().await.expect("Nothing received");
                     if let Ok(addr) = input.trim_end().parse() {
                         println!("  connecting...");
-                        if let Err(e) = daemon.add_peer(addr).await {
+                        if let Err(e) = warpd.add_peer(addr).await {
                             println!("could not connect to peer: {}", e.to_string());
                             continue;
                         } else {
                             println!("peer added at {}\n", addr);
-                            let peer: &mut Peer = daemon
+                            let peer: &mut Peer = warpd
                                 .conn_man
                                 .peers
                                 .last_mut()
                                 .expect("Should have just added a peeer");
                             if let Err(_) = peer_mode(peer, &mut rx).await {
-                                daemon.conn_man.peers.pop();
+                                warpd.conn_man.peers.pop();
                             }
                         }
                     } else {
@@ -158,43 +158,43 @@ pub mod shell {
                     write_prompt("  enter a port number:");
                     let addr = rx.recv().await.expect("Nothing received");
                     println!("  listening...");
-                    if let Err(e) = daemon.accept_peer(addr.trim_end()).await {
+                    if let Err(e) = warpd.accept_peer(addr.trim_end()).await {
                         println!("could not accept connection: {}", e.to_string());
                         continue;
                     } else {
                         println!("peer added at {}", addr);
                     }
-                    let peer: &mut Peer = daemon
+                    let peer: &mut Peer = warpd
                         .conn_man
                         .peers
                         .last_mut()
                         .expect("Should have just added a peeer");
                     if let Err(_) = peer_mode(peer, &mut rx).await {
-                        daemon.conn_man.peers.pop();
+                        warpd.conn_man.peers.pop();
                     }
                 }
-                "peer" | "p" => match daemon.conn_man.peers.len() {
+                "peer" | "p" => match warpd.conn_man.peers.len() {
                     0 => {
                         write_prompt("  No peers found. Press 'a' to add a peer.\n\n");
                         continue;
                     }
                     1 => {
                         write_prompt("  1 peer found. autoselecting...\n\n");
-                        let peer = &mut daemon.conn_man.peers[0];
+                        let peer = &mut warpd.conn_man.peers[0];
                         if let Err(_) = peer_mode(peer, &mut rx).await {
-                            daemon.conn_man.peers.pop();
+                            warpd.conn_man.peers.pop();
                         }
                     }
                     _ => loop {
                         write_prompt(&format!(
                             "  select a peer by id (0...{}) or 'b' to go back:",
-                            daemon.conn_man.peers.len() - 1
+                            warpd.conn_man.peers.len() - 1
                         ));
                         let input = rx.recv().await.expect("Nothing received");
                         if let Ok(id) = input.trim_end().parse::<usize>() {
-                            let peer = &mut daemon.conn_man.peers[id];
+                            let peer = &mut warpd.conn_man.peers[id];
                             if let Err(_) = peer_mode(peer, &mut rx).await {
-                                daemon.conn_man.peers.remove(id);
+                                warpd.conn_man.peers.remove(id);
                             }
                             break;
                         }

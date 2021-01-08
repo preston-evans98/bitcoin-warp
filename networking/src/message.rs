@@ -13,6 +13,11 @@ use shared::Transaction;
 use shared::{u256, CompactInt};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// An enumeration of all [Bitcoin Wire Protocol](https://developer.bitcoin.org/reference/p2p_networking.html) messages, (i.e. GetHeaders, Version, Verack).
+///
+/// Messages are actual messages, as opposed to [`Command`s](crate::Command) which are a shorthand way of referring to a type of Message.
+/// A Message takes about 90 bytes of data on the stack, while a Command is a single byte.
 #[derive(Debug, Serializable)]
 pub enum Message {
     Addr {
@@ -119,7 +124,7 @@ impl Message {
     pub fn version(
         peer_ip: SocketAddr,
         peer_services: u64,
-        daemon_ip: SocketAddr,
+        warpd_ip: SocketAddr,
         best_block: u32,
         config: &config::Config,
     ) -> Message {
@@ -130,7 +135,7 @@ impl Message {
             receiver_services: peer_services,
             receiver: peer_ip,
             transmitter_services: config.get_services(),
-            transmitter_ip: daemon_ip,
+            transmitter_ip: warpd_ip,
             nonce: 0 as u64,
             user_agent: Vec::new(),
             best_block: best_block,

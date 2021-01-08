@@ -9,6 +9,23 @@ use shared::Serializable;
 use shared::Transaction;
 use shared::{u256, CompactInt, Deserializable, DeserializationError, InventoryData};
 use tracing::{self, debug, trace};
+/// A [Codec](https://tokio-rs.github.io/tokio/doc/tokio_util/codec/index.html) converting a raw TcpStream into a Sink + Stream of Bitcoin Wire Protocol [`Message`s](crate::Message).
+///
+/// This struct handles the serialization and sending of [`Message`s](crate::Message). Callers simply construct a [Framed](https://tokio-rs.github.io/tokio/doc/tokio_util/codec/struct.Framed.html)
+/// instance containing the codec and the TcpStream.
+/// ```
+/// // Note: This example does not compile outside the context of an async runtime.
+/// let connection = tokio::net::TcpStream::connect("127.0.0.1:8333".into()).await?;
+/// let codec = networking::BitcoinCodec::new(0);
+/// let connection = Framed::new(connection, codec);
+///
+/// // Create and send a message.
+/// let msg = Message::Verack{};
+/// connection.send(msg).await?;
+/// // Await the response.
+/// let response: Message  = connection.next().await?;
+/// ```
+
 #[derive(Debug)]
 pub struct Codec {
     magic: u32,
@@ -442,7 +459,7 @@ impl Codec {
 mod message_size_tests {
     use crate::types::PrefilledTransaction;
     use crate::{
-        Codec,
+        BitcoinCodec,
         Message::{self, *},
     };
     use bytes::{BufMut, BytesMut};
@@ -452,14 +469,14 @@ mod message_size_tests {
     impl Message {
         fn to_bytes(&self) -> Result<BytesMut, std::io::Error> {
             // let mut out = Vec::with_capacity(codec.get_serialized_size(&self));
-            let codec = Codec::new(0);
-            let out = BytesMut::with_capacity(Codec::get_serialized_size(&self));
+            let codec = BitcoinCodec::new(0);
+            let out = BytesMut::with_capacity(BitcoinCodec::get_serialized_size(&self));
             let mut out = out.writer();
             let _ = codec.serialize_body(&self, &mut out)?;
             Ok(out.into_inner())
         }
         fn serialized_size(&self) -> usize {
-            Codec::get_serialized_size(self)
+            BitcoinCodec::get_serialized_size(self)
         }
     }
 

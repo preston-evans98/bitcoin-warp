@@ -1,13 +1,12 @@
 extern crate hex;
 extern crate serde_derive;
-use daemon::run_shell;
-use serde_derive::{Deserializable, Serializable};
 use tracing_subscriber::{filter::LevelFilter, fmt};
-#[derive(Serializable, Deserializable, Debug)]
-pub struct MyTestStruct {
-    identifier: u32,
-    contents: [u8; 4],
-}
+use warpd::run_shell;
+// #[derive(Serializable, Deserializable, Debug)]
+// pub struct MyTestStruct {
+//     identifier: u32,
+//     contents: [u8; 4],
+// }
 
 // fn test() {
 //     // use shared::Deserializable;
@@ -55,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     run_shell().await?;
     // // test();
 
-    // // println!("{:?}", daemon);
+    // // println!("{:?}", warpd);
 
     // let command = Command::Version;
     // let config = Config::mainnet();
@@ -67,11 +66,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let result = raspi.perform_handshake(None).await;
     // println!("{:?}", result);
     // raspi.send(command).await;
-    // execute_command(command, daemon);
+    // execute_command(command, warpd);
     Ok(())
 }
 
-// fn execute_command(command: Command, daemon: Daemon) {
+// fn execute_command(command: Command, warpd: Warpd) {
 //     match command {
 //         Command::Version => {
 //             let mut msg = Message::new();
@@ -90,8 +89,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //                     "Connected to the server! Outbound port: {}",
 //                     self_addr.port()
 //                 );
-//                 msg.create_version_body(&self_addr, &addr, &daemon.config);
-//                 msg.create_header_for_body(Command::Version, &daemon.config);
+//                 msg.create_version_body(&self_addr, &addr, &warpd.config);
+//                 msg.create_header_for_body(Command::Version, &warpd.config);
 //                 stream.set_read_timeout(Some(Duration::new(10, 0))).unwrap();
 //                 let retval = stream.write(msg.get_header().get_bytes()).unwrap();
 //                 println!("Write returned {}.", retval);

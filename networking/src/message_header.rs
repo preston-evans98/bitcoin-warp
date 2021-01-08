@@ -2,6 +2,11 @@ use crate::command::Command;
 use serde_derive::Deserializable;
 use shared::{Deserializable, DeserializationError};
 
+/// A [Bitcoin Wire Protocol](https://developer.bitcoin.org/reference/p2p_networking.html) [Message Header](https://developer.bitcoin.org/reference/p2p_networking.html#message-headers).
+///
+/// This struct is encapsulated by the [`BitcoinCodec`](crate::BitcoinCodec), which automatically creates and sends Message Headers at serialization time.
+/// Most users should not need to interact with this struct, but
+/// it is is exported as a convencience to those who don't wish to use the Codec.
 #[derive(Deserializable, Debug)]
 pub struct MessageHeader {
     magic: u32,
