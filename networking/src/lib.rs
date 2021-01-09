@@ -30,6 +30,9 @@ pub use message_header::MessageHeader;
 
 mod server;
 
+mod interface;
+pub use interface::{NetworkRequest, NetworkResponse};
+
 // mod messages;
 // pub use messages::Addr;
 // pub use messages::Block;
