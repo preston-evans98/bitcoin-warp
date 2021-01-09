@@ -329,7 +329,7 @@ impl Codec {
                         transmitter_services: Services::deserialize(src)?,
                         transmitter_ip: std::net::SocketAddr::deserialize(src)?,
                         nonce: Nonce::deserialize(src)?,
-                        user_agent: <Vec<u8>>::deserialize(src)?,
+                        user_agent: String::deserialize(src)?,
                         best_block: u32::deserialize(src)?,
                         relay: bool::deserialize(src)?,
                     },

@@ -109,11 +109,18 @@ impl Deserializable for String {
         R: std::io::Read,
     {
         let len = CompactInt::deserialize(target)?.value() as usize;
-        let mut result = String::with_capacity(len);
-        for _ in 0..len {
-            result.push(target.read_u8()? as char);
+        let mut vec = Vec::with_capacity(len);
+        vec.resize(len, 0);
+        target.read_exact(&mut vec)?;
+        if let Ok(string) = String::from_utf8(vec) {
+            return Ok(string);
         }
-        Ok(result)
+        return Ok(String::from("?"));
+        // let mut result = String::with_capacity(len);
+        // for _ in 0..len {
+        //     result.push(target.read_u8()? as char);
+        // }
+        // Ok(result)
     }
 }
 

@@ -114,7 +114,7 @@ pub enum Message {
         transmitter_services: Services,
         transmitter_ip: SocketAddr,
         nonce: Nonce,
-        user_agent: Vec<u8>,
+        user_agent: String,
         best_block: u32,
         relay: bool,
     },
@@ -137,7 +137,7 @@ impl Message {
             transmitter_services: config.get_services(),
             transmitter_ip: warpd_ip,
             nonce: 0 as u64,
-            user_agent: Vec::new(),
+            user_agent: String::from("𝑩itcoin Warp"),
             best_block: best_block,
             relay: true,
         }
