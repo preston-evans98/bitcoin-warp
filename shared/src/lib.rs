@@ -26,4 +26,10 @@ mod block_header;
 pub use block_header::{BlockHeader, Nbits};
 
 mod transaction;
-pub use transaction::{CoinbaseInput, Transaction, TxInput, TxOutpoint, TxOutput};
+pub use transaction::{Transaction, TxInput, TxOutpoint, TxOutput};
+
+mod cached;
+use cached::Cached;
+
+mod merkle_tree;
+use merkle_tree::MerkleTree;

@@ -12,3 +12,4 @@ warp-crypto = { path = "../crypto" }
 hex = "0.4.2"
 paste = "1.0"
 serde_derive = { path = "../serde_derive" }
+bytes = "1.0.0" 

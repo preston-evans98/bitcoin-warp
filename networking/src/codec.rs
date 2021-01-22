@@ -3,11 +3,12 @@ use crate::types::*;
 use crate::Message;
 use byteorder::WriteBytesExt;
 use bytes::{BufMut, BytesMut};
-use shared::BlockHeader;
 use shared::EncapsulatedAddr;
 use shared::Serializable;
 use shared::Transaction;
-use shared::{u256, CompactInt, Deserializable, DeserializationError, InventoryData};
+use shared::{
+    u256, Block, BlockHeader, CompactInt, Deserializable, DeserializationError, InventoryData,
+};
 use tracing::{self, debug, trace};
 /// A [Codec](https://tokio-rs.github.io/tokio/doc/tokio_util/codec/index.html) converting a raw TcpStream into a Sink + Stream of Bitcoin Wire Protocol [`Message`s](crate::Message).
 ///
@@ -148,12 +149,9 @@ impl Codec {
             } => {
                 32 + CompactInt::size(txs.len()) + txs.iter().fold(0, |total, tx| total + tx.len())
             }
-            Message::Block {
-                block_header: _,
-                ref transactions,
-            } => {
+            Message::Block { ref block } => {
                 BlockHeader::len()
-                    + CompactInt::size(transactions.len())
+                    + CompactInt::size(block.transactions().len())
                     + transactions.iter().fold(0, |total, tx| total + tx.len())
             }
             Message::CompactBlock {
@@ -343,8 +341,7 @@ impl Codec {
                         inventory: <Vec<InventoryData>>::deserialize(src)?,
                     },
                     crate::Command::Block => Message::Block {
-                        block_header: BlockHeader::deserialize(src)?,
-                        transactions: <Vec<Transaction>>::deserialize(src)?,
+                        block: shared::Block::deserialize(src)?,
                     },
                     crate::Command::GetHeaders => Message::GetHeaders {
                         protocol_version: ProtocolVersion::deserialize(src)?,
@@ -568,8 +565,7 @@ mod message_size_tests {
         );
 
         let msg = Block {
-            block_header,
-            transactions: txs,
+            block: shared::Block::new(block_header, txs),
         };
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());

@@ -11,17 +11,17 @@ pub struct BlockHeader {
     time: u32,
     target: Nbits,
     nonce: u32,
-    own_hash: Invisible<u256>,
-    reported_height: Invisible<usize>,
+    own_hash: Cached<u256>,
+    reported_height: Cached<usize>,
 }
 
-impl<T> std::fmt::Debug for Invisible<T> {
+impl<T> std::fmt::Debug for Cached<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Ok(())
     }
 }
-struct Invisible<T>(Option<T>);
-impl<T> Serializable for Invisible<T> {
+struct Cached<T>(Option<T>);
+impl<T> Serializable for Cached<T> {
     fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
     where
         W: std::io::Write,
@@ -29,12 +29,12 @@ impl<T> Serializable for Invisible<T> {
         Ok(())
     }
 }
-impl<T> shared::Deserializable for Invisible<T> {
+impl<T> shared::Deserializable for Cached<T> {
     fn deserialize<R>(_: &mut R) -> std::result::Result<Self, shared::DeserializationError>
     where
         R: std::io::Read,
     {
-        Ok(Invisible(None))
+        Ok(Cached(None))
     }
 }
 
@@ -42,6 +42,9 @@ impl BlockHeader {
     // Returns length of serialized header in bytes
     pub const fn len() -> usize {
         80
+    }
+    pub fn version(&self) -> u32 {
+        self.version
     }
     pub fn new(
         version: u32,
@@ -58,8 +61,8 @@ impl BlockHeader {
             time,
             target,
             nonce,
-            own_hash: Invisible(None),
-            reported_height: Invisible(None),
+            own_hash: Cached(None),
+            reported_height: Cached(None),
         }
     }
 
@@ -73,7 +76,7 @@ impl BlockHeader {
             .expect("Serialization to vec shouldn't fail");
         let hash = sha256d(&serial);
         let mut cursor = std::io::Cursor::new(hash);
-        self.own_hash = Invisible(Some(
+        self.own_hash = Cached(Some(
             u256::deserialize(&mut cursor).expect("Deserialization from vec shouldn't fail"),
         ));
         self.hash()

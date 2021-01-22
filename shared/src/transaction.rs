@@ -1,11 +1,13 @@
-use crate as shared;
+use crate::{self as shared, Cached, Deserializable, DeserializationError};
 use crate::{u256, CompactInt};
+use bytes::BytesMut;
 use serde_derive::{Deserializable, Serializable};
-#[derive(Deserializable, Serializable, Debug)]
+#[derive(Serializable, Debug)]
 pub struct Transaction {
     version: i32,
     inputs: Vec<TxInput>,
     outputs: Vec<TxOutput>,
+    hash: Cached<u256>,
 }
 impl Transaction {
     pub fn len(&self) -> usize {
@@ -25,10 +27,17 @@ impl Transaction {
             version,
             inputs,
             outputs,
+            hash: Cached::new(),
         }
     }
-    fn is_coinbase(&self) -> bool {
+    pub fn is_coinbase(&self) -> bool {
         self.inputs.len() == 1 && self.inputs[0].is_coinbase_in()
+    }
+}
+
+impl Transaction {
+    pub fn deserialize(src: BytesMut) -> Result<Self, DeserializationError> {
+        todo!()
     }
 }
 #[derive(Deserializable, Serializable, Debug)]
@@ -82,5 +91,5 @@ impl TxOutpoint {
     }
 }
 
-#[derive(Deserializable, Serializable)]
-pub struct CoinbaseInput {}
+// #[derive(Deserializable, Serializable)]
+// pub struct CoinbaseInput {}

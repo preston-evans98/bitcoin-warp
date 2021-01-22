@@ -18,7 +18,6 @@ pub struct Server<NodeDataStore> {
     shutdown_rx: Receiver<()>,
     current_request: Option<NetworkRequest>,
 }
-
 enum ServerError {
     Io(String),
 }
@@ -85,12 +84,9 @@ impl<NodeDataStore> Server<NodeDataStore> {
                 Message::BlockTxn { block_hash, txs } => {
                     unimplemented!()
                 }
-                Message::Block {
-                    mut block_header,
-                    transactions,
-                } => {
+                Message::Block { block } => {
                     // If the block is one we requested, remove it from our pending set and add it to the response
-                    if requested_blocks.remove(block_header.hash()) {
+                    if requested_blocks.remove(block.header().hash()) {
                         let block = Block::new(block_header, transactions);
                         accumulated_blocks.push(block);
                     }

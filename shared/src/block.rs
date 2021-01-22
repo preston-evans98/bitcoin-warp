@@ -1,7 +1,8 @@
 use crate::block_header::BlockHeader;
 use crate::transaction::Transaction;
-use crate::{self as shared, Deserializable, DeserializationError};
+use crate::{self as shared, Deserializable, DeserializationError, MerkleTree};
 use crate::{CompactInt, Serializable};
+use bytes::BytesMut;
 use serde_derive::Serializable;
 #[derive(Serializable, Debug)]
 pub struct Block {
@@ -16,6 +17,12 @@ impl Block {
             transactions: txs,
         };
         message
+    }
+    pub fn header(&self) -> &BlockHeader {
+        &self.block_header
+    }
+    pub fn transactions(&self) -> &Vec<Transaction> {
+        &self.transactions
     }
     fn serialized_size(&self) -> usize {
         let mut size = CompactInt::size(self.transactions.len());
@@ -34,10 +41,7 @@ impl Block {
     /// 1. The block contains exactly one Coinbase transaction, and it's in the first position.
     /// 1. The block does not contain duplicate transactions
     /// 1. The transactions merkle-ize to the root in the block header
-    fn deserialize<R>(src: &mut R) -> Result<Self, DeserializationError>
-    where
-        R: std::io::Read,
-    {
+    fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {
         let header = BlockHeader::deserialize(src)?;
         let tx_count = CompactInt::deserialize(src)?;
 
@@ -47,13 +51,32 @@ impl Block {
                 "Block contains no transactions",
             )));
         }
-        
+
+        // Deserialize and structurally validate Coinbase
         let first_tx = Transaction::deserialize(src)?;
-        // if !first_tx.
-        // if header.version >= 2 {
-        //     header.reported_height = 
-        // }
-        // FIXME: finish implementing
+        if !first_tx.is_coinbase() {
+            return Err(DeserializationError::Parse(String::from(
+                "Block did not contain Coinbase in first position",
+            )));
+        }
+        // TODO: Parse block height
+        if header.version() >= 2 {}
+
+        let mut transactions = Vec::with_capacity(tx_count.value() as usize);
+        let mut merkle_tree = MerkleTree::new();
+        transactions.push(first_tx);
+
+        // Parse and validate remaining transactions
+        for _ in 1..tx_count.value() {
+            let next = Transaction::deserialize(src)?;
+            if next.is_coinbase() {
+                return Err(DeserializationError::Parse(String::from(
+                    "Block contained second Coinbase",
+                )));
+            }
+            merkle_tree.update(next.hash());
+            transactions.push(next);
+        }
 
         todo!()
     }
