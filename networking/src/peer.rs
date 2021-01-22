@@ -1,10 +1,11 @@
-use crate::{command::Command, BitcoinCodec, Message};
+use crate::{command::Command, BitcoinCodec, Message, NetworkRequest};
 use config::Config;
 use futures::prelude::*;
 use shared::DeserializationError;
 use std::net::SocketAddr;
 use std::time::Duration;
 use std::{fmt, sync::Arc};
+use tower::Service;
 // use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
@@ -21,6 +22,7 @@ pub enum PeerError {
     Deserialzation(DeserializationError),
     Message(String),
     Malicious(String),
+    Unexpected(String),
     ConnectionClosed,
 }
 impl From<DeserializationError> for PeerError {
@@ -48,6 +50,7 @@ impl fmt::Display for PeerError {
             PeerError::Message(cause) => cause.fmt(f),
             PeerError::Malicious(cause) => cause.fmt(f),
             PeerError::ConnectionClosed => Ok(()),
+            PeerError::Unexpected(cause) => cause.fmt(f),
         }
     }
 }
@@ -176,3 +179,22 @@ impl Peer {
         )
     }
 }
+
+// impl Service<NetworkRequest> for Peer {
+//     type Response;
+
+//     type Error;
+
+//     type Future;
+
+//     fn poll_ready(
+//         &mut self,
+//         cx: &mut std::task::Context<'_>,
+//     ) -> std::task::Poll<Result<(), Self::Error>> {
+//         todo!()
+//     }
+
+//     fn call(&mut self, req: NetworkRequest) -> Self::Future {
+//         todo!()
+//     }
+// }

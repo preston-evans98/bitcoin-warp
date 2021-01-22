@@ -3,7 +3,7 @@ use crate::serializable::Serializable;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub struct u256([u64; 4]);
 
 fn substring(target: &str, start: usize, end: usize) -> &str {
@@ -16,6 +16,10 @@ fn substring(target: &str, start: usize, end: usize) -> &str {
 impl u256 {
     pub fn new() -> u256 {
         u256([0, 0, 0, 0])
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.0 == [0, 0, 0, 0]
     }
 
     pub fn from(target: u64) -> u256 {
@@ -124,6 +128,8 @@ impl PartialEq for u256 {
         self.0 == other.0
     }
 }
+
+impl Eq for u256 {}
 
 #[test]
 fn test_u256_ser_deser() {

@@ -1,7 +1,8 @@
-use crate as shared;
 use crate::u256;
+use crate::{self as shared, Deserializable, Serializable};
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde_derive::{Deserializable, Serializable};
+use warp_crypto::sha256d;
 #[derive(Deserializable, Serializable, Debug)]
 pub struct BlockHeader {
     version: u32,
@@ -10,11 +11,36 @@ pub struct BlockHeader {
     time: u32,
     target: Nbits,
     nonce: u32,
+    own_hash: Invisible<u256>,
+    reported_height: Invisible<usize>,
+}
+
+impl<T> std::fmt::Debug for Invisible<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Ok(())
+    }
+}
+struct Invisible<T>(Option<T>);
+impl<T> Serializable for Invisible<T> {
+    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    where
+        W: std::io::Write,
+    {
+        Ok(())
+    }
+}
+impl<T> shared::Deserializable for Invisible<T> {
+    fn deserialize<R>(_: &mut R) -> std::result::Result<Self, shared::DeserializationError>
+    where
+        R: std::io::Read,
+    {
+        Ok(Invisible(None))
+    }
 }
 
 impl BlockHeader {
     // Returns length of serialized header in bytes
-    pub fn len() -> usize {
+    pub const fn len() -> usize {
         80
     }
     pub fn new(
@@ -32,7 +58,25 @@ impl BlockHeader {
             time,
             target,
             nonce,
+            own_hash: Invisible(None),
+            reported_height: Invisible(None),
         }
+    }
+
+    pub fn hash(&mut self) -> &u256 {
+        if let Some(ref hash) = self.own_hash.0 {
+            return hash;
+        }
+        let mut serial = vec![0u8; BlockHeader::len()];
+        let mut writer = std::io::Cursor::new(&mut serial);
+        self.serialize(&mut writer)
+            .expect("Serialization to vec shouldn't fail");
+        let hash = sha256d(&serial);
+        let mut cursor = std::io::Cursor::new(hash);
+        self.own_hash = Invisible(Some(
+            u256::deserialize(&mut cursor).expect("Deserialization from vec shouldn't fail"),
+        ));
+        self.hash()
     }
 }
 

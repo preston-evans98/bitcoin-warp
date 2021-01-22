@@ -27,6 +27,9 @@ impl Transaction {
             outputs,
         }
     }
+    fn is_coinbase(&self) -> bool {
+        self.inputs.len() == 1 && self.inputs[0].is_coinbase_in()
+    }
 }
 #[derive(Deserializable, Serializable, Debug)]
 pub struct TxInput {
@@ -47,6 +50,9 @@ impl TxInput {
             signature_script,
             sequence,
         }
+    }
+    pub fn is_coinbase_in(&self) -> bool {
+        self.previous_outpoint.hash.is_zero() && self.previous_outpoint.index == std::u32::MAX
     }
 }
 #[derive(Deserializable, Serializable, Debug)]

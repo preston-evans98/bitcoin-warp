@@ -33,6 +33,8 @@ mod server;
 mod interface;
 pub use interface::{NetworkRequest, NetworkResponse};
 
+mod peers;
+
 // mod messages;
 // pub use messages::Addr;
 // pub use messages::Block;

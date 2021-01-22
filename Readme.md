@@ -1,5 +1,5 @@
 # Welcome to Bitcoin Warp
-Bitcoin Warp is an ongoing implementation of a new Bitcoin Client in Rust. You can track our progress on [Github](https://github.com/preston-evans98/bitcoin-warp) or view our docs at [bitcoinwarp.com](bitcoinwarp.com).
+Bitcoin Warp is an ongoing implementation of a new [Bitcoin](http://www.bitcoinwarp.com/bitcoin.pdf) client in Rust. You can track our progress on [Github](https://github.com/preston-evans98/bitcoin-warp) or view our docs at [bitcoinwarp.com](bitcoinwarp.com).
 
 Bitcoin Warp is a work in progress.  It is developed as a collection of 
 libraries implementing the different components of a Bitcoin node (such as networking, cryptography, shared primitives, etc.), and a `warpd` binary which uses them. Expect the structure of this project to change very frequently up until the 1.0 release.

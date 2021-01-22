@@ -6,6 +6,9 @@ pub enum NetworkRequest {
     Peers,
     /// Requests all blocks with provided hashes
     BlocksByHash(HashSet<u256>),
+    // /// Requests a single block when the requester believes itself to be in sync.
+    // /// Allows us to use cmpctblck to save bandwidth
+    // NextBlock,
     /// Requests all transactions with provided hashes
     TransactionsByHash(HashSet<u256>),
     /// Requests headers starting with the first header in the vec. If max_responses is not provided, the Service will attempt to return every header up to the current tip.

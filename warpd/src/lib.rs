@@ -1,14 +1,4 @@
-//! ![BitcoinWarp Logo](/Users/prestonevans/Downloads/BitcoinWarpLogoMock.png)
-//! Welcome to Bitcoin Warp, an ongoing implementation of a new Bitcoin Client in Rust.
-//!
-//! Bitcoin Warp is a work in progress.  It is developed as a collection of
-//! libraries implementing the different components of a Bitcoin node (networking,
-//! cryptography, shared primitives, etc.), and a `warpd` binary which uses them. Expect the structure
-//! of this project to change very frequently up until the 1.0 release.
-//!
-//! Almost all of our work so far has gone into `networking`, an implementation of the Bitcoin Wire Protocol
-//! inspired by [Zcash Zebra's](https://doc.zebra.zfnd.org) new networking stack.
-//! However, many of the core components of the `shared` library have also begun to stabilize.
+// //! ![BitcoinWarp Logo](/Users/prestonevans/Downloads/BitcoinWarpLogoMock.png)
 
 mod shell;
 use config::Config;

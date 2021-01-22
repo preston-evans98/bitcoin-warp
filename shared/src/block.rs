@@ -1,9 +1,9 @@
-use crate as shared;
 use crate::block_header::BlockHeader;
 use crate::transaction::Transaction;
+use crate::{self as shared, Deserializable, DeserializationError};
 use crate::{CompactInt, Serializable};
-use serde_derive::{Deserializable, Serializable};
-#[derive(Deserializable, Serializable, Debug)]
+use serde_derive::Serializable;
+#[derive(Serializable, Debug)]
 pub struct Block {
     block_header: BlockHeader,
     transactions: Vec<Transaction>,
@@ -29,6 +29,33 @@ impl Block {
         let mut target = Vec::with_capacity(self.serialized_size());
         self.serialize(&mut target)?;
         Ok(target)
+    }
+    /// Deserializes a block. Attempts to make structurally invalid blocks unrepresentable by enforcing that...
+    /// 1. The block contains exactly one Coinbase transaction, and it's in the first position.
+    /// 1. The block does not contain duplicate transactions
+    /// 1. The transactions merkle-ize to the root in the block header
+    fn deserialize<R>(src: &mut R) -> Result<Self, DeserializationError>
+    where
+        R: std::io::Read,
+    {
+        let header = BlockHeader::deserialize(src)?;
+        let tx_count = CompactInt::deserialize(src)?;
+
+        // Reject empty blocks
+        if tx_count.value() == 0 {
+            return Err(DeserializationError::Parse(String::from(
+                "Block contains no transactions",
+            )));
+        }
+        
+        let first_tx = Transaction::deserialize(src)?;
+        // if !first_tx.
+        // if header.version >= 2 {
+        //     header.reported_height = 
+        // }
+        // FIXME: finish implementing
+
+        todo!()
     }
 }
 
