@@ -1,9 +1,12 @@
-use crate::u256;
-use crate::{self as shared, Deserializable, Serializable};
+use core::panic;
+
+use crate::{self as shared, merkle_tree, Cached, Deserializable, Serializable};
+use crate::{u256, DeserializationError};
 use byteorder::{LittleEndian, ReadBytesExt};
-use serde_derive::{Deserializable, Serializable};
+use bytes::{Buf, BytesMut};
+use serde_derive::Serializable;
 use warp_crypto::sha256d;
-#[derive(Deserializable, Serializable, Debug)]
+#[derive(Serializable, Debug)]
 pub struct BlockHeader {
     version: u32,
     prev_hash: u256,
@@ -15,29 +18,6 @@ pub struct BlockHeader {
     reported_height: Cached<usize>,
 }
 
-impl<T> std::fmt::Debug for Cached<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Ok(())
-    }
-}
-struct Cached<T>(Option<T>);
-impl<T> Serializable for Cached<T> {
-    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
-    where
-        W: std::io::Write,
-    {
-        Ok(())
-    }
-}
-impl<T> shared::Deserializable for Cached<T> {
-    fn deserialize<R>(_: &mut R) -> std::result::Result<Self, shared::DeserializationError>
-    where
-        R: std::io::Read,
-    {
-        Ok(Cached(None))
-    }
-}
-
 impl BlockHeader {
     // Returns length of serialized header in bytes
     pub const fn len() -> usize {
@@ -45,6 +25,9 @@ impl BlockHeader {
     }
     pub fn version(&self) -> u32 {
         self.version
+    }
+    pub fn merkle_root(&self) -> &u256 {
+        &self.merkle_root
     }
     pub fn new(
         version: u32,
@@ -61,25 +44,53 @@ impl BlockHeader {
             time,
             target,
             nonce,
-            own_hash: Cached(None),
-            reported_height: Cached(None),
+            own_hash: Cached::new(),
+            reported_height: Cached::new(),
         }
+    }
+    pub fn deserialize(src: BytesMut) -> Result<Self, DeserializationError> {
+        let slice = match src.get(0..80) {
+            Some(s) => s,
+            None => {
+                return Err(DeserializationError::Parse(String::from(
+                    "Not enough bytes in block header",
+                )))
+            }
+        };
+        let hash_bytes = sha256d(slice);
+        let own_hash = u256::from_bytes(hash_bytes)?;
+        let mut reader = src.reader();
+        Ok(BlockHeader {
+            version: u32::deserialize(&mut reader)?,
+            prev_hash: u256::deserialize(&mut reader)?,
+            merkle_root: u256::deserialize(&mut reader)?,
+            time: u32::deserialize(&mut reader)?,
+            target: Nbits::deserialize(&mut reader)?,
+            nonce: u32::deserialize(&mut reader)?,
+            own_hash: Cached::from(own_hash),
+            reported_height: Cached::new(),
+        })
     }
 
     pub fn hash(&mut self) -> &u256 {
-        if let Some(ref hash) = self.own_hash.0 {
-            return hash;
+        if self.own_hash.has_value() {
+            return self.own_hash.ref_value().unwrap();
         }
-        let mut serial = vec![0u8; BlockHeader::len()];
-        let mut writer = std::io::Cursor::new(&mut serial);
-        self.serialize(&mut writer)
-            .expect("Serialization to vec shouldn't fail");
-        let hash = sha256d(&serial);
-        let mut cursor = std::io::Cursor::new(hash);
-        self.own_hash = Cached(Some(
-            u256::deserialize(&mut cursor).expect("Deserialization from vec shouldn't fail"),
-        ));
-        self.hash()
+        panic!("Constructor must set hash!")
+    }
+
+    pub fn set_hash(&mut self) {
+        if !self.own_hash.has_value() {
+            let mut serial = vec![0u8; BlockHeader::len()];
+            let mut writer = std::io::Cursor::new(&mut serial);
+            self.serialize(&mut writer)
+                .expect("Serialization to vec shouldn't fail");
+            let hash = sha256d(&serial);
+            let mut cursor = std::io::Cursor::new(hash);
+            self.own_hash = Cached::from(
+                u256::deserialize(&mut cursor).expect("Deserialization from vec shouldn't fail"),
+            );
+        }
     }
 }
 

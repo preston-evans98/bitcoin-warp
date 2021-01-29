@@ -2,7 +2,7 @@ use crate::message_header::MessageHeader;
 use crate::types::*;
 use crate::Message;
 use byteorder::WriteBytesExt;
-use bytes::{BufMut, BytesMut};
+use bytes::{Buf, BufMut, BytesMut};
 use shared::EncapsulatedAddr;
 use shared::Serializable;
 use shared::Transaction;
@@ -98,7 +98,6 @@ impl tokio_util::codec::Decoder for Codec {
                 }
 
                 let reader = src.split_to(header.get_payload_size());
-                let mut reader = std::io::Cursor::new(reader);
 
                 let contents = self.deserialize(&mut reader)?;
                 Ok(Some(contents))
@@ -152,7 +151,10 @@ impl Codec {
             Message::Block { ref block } => {
                 BlockHeader::len()
                     + CompactInt::size(block.transactions().len())
-                    + transactions.iter().fold(0, |total, tx| total + tx.len())
+                    + block
+                        .transactions()
+                        .iter()
+                        .fold(0, |total, tx| total + tx.len())
             }
             Message::CompactBlock {
                 header: _,
@@ -302,10 +304,7 @@ impl Codec {
         Ok(())
     }
 
-    fn deserialize<R: std::io::Read>(
-        &mut self,
-        src: &mut R,
-    ) -> Result<Message, DeserializationError> {
+    fn deserialize(&mut self, src: &mut BytesMut) -> Result<Message, DeserializationError> {
         match self.state {
             DecoderState::Header => {
                 unreachable!(
@@ -315,39 +314,52 @@ impl Codec {
             DecoderState::Body { ref header } => {
                 let msg = match header.get_command() {
                     crate::Command::Addr => {
-                        let addrs = Vec::<EncapsulatedAddr>::deserialize(src)?;
+                        let mut src = src.reader();
+                        let addrs = Vec::<EncapsulatedAddr>::deserialize(&mut src)?;
                         Message::Addr { addrs }
                     }
-                    crate::Command::Version => Message::Version {
-                        protocol_version: ProtocolVersion::deserialize(src)?,
-                        services: Services::deserialize(src)?,
-                        timestamp: u64::deserialize(src)?,
-                        receiver_services: Services::deserialize(src)?,
-                        receiver: std::net::SocketAddr::deserialize(src)?,
-                        transmitter_services: Services::deserialize(src)?,
-                        transmitter_ip: std::net::SocketAddr::deserialize(src)?,
-                        nonce: Nonce::deserialize(src)?,
-                        user_agent: String::deserialize(src)?,
-                        best_block: u32::deserialize(src)?,
-                        relay: bool::deserialize(src)?,
-                    },
+                    crate::Command::Version => {
+                        let mut src = src.reader();
+                        Message::Version {
+                            protocol_version: ProtocolVersion::deserialize(&mut src)?,
+                            services: Services::deserialize(&mut src)?,
+                            timestamp: u64::deserialize(&mut src)?,
+                            receiver_services: Services::deserialize(&mut src)?,
+                            receiver: std::net::SocketAddr::deserialize(&mut src)?,
+                            transmitter_services: Services::deserialize(&mut src)?,
+                            transmitter_ip: std::net::SocketAddr::deserialize(&mut src)?,
+                            nonce: Nonce::deserialize(&mut src)?,
+                            user_agent: String::deserialize(&mut src)?,
+                            best_block: u32::deserialize(&mut src)?,
+                            relay: bool::deserialize(&mut src)?,
+                        }
+                    }
                     crate::Command::Verack => Message::Verack {},
-                    crate::Command::GetBlocks => Message::GetBlocks {
-                        protocol_version: ProtocolVersion::deserialize(src)?,
-                        block_header_hashes: <Vec<u256>>::deserialize(src)?,
-                        stop_hash: u256::deserialize(src)?,
-                    },
-                    crate::Command::GetData => Message::GetData {
-                        inventory: <Vec<InventoryData>>::deserialize(src)?,
-                    },
+                    crate::Command::GetBlocks => {
+                        let mut src = src.reader();
+                        Message::GetBlocks {
+                            protocol_version: ProtocolVersion::deserialize(&mut src)?,
+                            block_header_hashes: <Vec<u256>>::deserialize(&mut src)?,
+                            stop_hash: u256::deserialize(&mut src)?,
+                        }
+                    }
+                    crate::Command::GetData => {
+                        let mut src = src.reader();
+                        Message::GetData {
+                            inventory: <Vec<InventoryData>>::deserialize(&mut src)?,
+                        }
+                    }
                     crate::Command::Block => Message::Block {
                         block: shared::Block::deserialize(src)?,
                     },
-                    crate::Command::GetHeaders => Message::GetHeaders {
-                        protocol_version: ProtocolVersion::deserialize(src)?,
-                        block_header_hashes: <Vec<u256>>::deserialize(src)?,
-                        stop_hash: u256::deserialize(src)?,
-                    },
+                    crate::Command::GetHeaders => {
+                        let mut src = src.reader();
+                        Message::GetHeaders {
+                            protocol_version: ProtocolVersion::deserialize(&mut src)?,
+                            block_header_hashes: <Vec<u256>>::deserialize(&mut src)?,
+                            stop_hash: u256::deserialize(&mut src)?,
+                        }
+                    }
                     crate::Command::Headers => {
                         // Custom deserialization necessary to account for extra
                         // Transaction count field. Note that transaction count is always zero in a headers message.

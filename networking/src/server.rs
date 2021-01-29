@@ -87,7 +87,6 @@ impl<NodeDataStore> Server<NodeDataStore> {
                 Message::Block { block } => {
                     // If the block is one we requested, remove it from our pending set and add it to the response
                     if requested_blocks.remove(block.header().hash()) {
-                        let block = Block::new(block_header, transactions);
                         accumulated_blocks.push(block);
                     }
                     // Drop unsolicited Blocks

@@ -9,6 +9,21 @@ impl<T> Cached<T> {
     pub fn new() -> Cached<T> {
         Cached(None)
     }
+    pub fn from(val: T) -> Cached<T> {
+        Cached(Some(val))
+    }
+    pub fn value(&self) -> &Option<T> {
+        &self.0
+    }
+    pub fn has_value(&self) -> bool {
+        self.0.is_some()
+    }
+    pub fn ref_value(&self) -> Option<&T> {
+        match self.0 {
+            Some(ref v) => Some(v),
+            None => None,
+        }
+    }
 }
 
 impl<T> std::fmt::Debug for Cached<T> {

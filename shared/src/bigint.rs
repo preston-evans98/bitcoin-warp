@@ -30,6 +30,10 @@ impl u256 {
         let mut cursor = std::io::Cursor::new(target);
         u256::deserialize_be(&mut cursor)
     }
+    pub fn from_bytes(target: [u8; 32]) -> Result<u256, DeserializationError> {
+        let mut cursor = std::io::Cursor::new(target);
+        u256::deserialize(&mut cursor)
+    }
 
     // A big_endian counterpart to deser
     pub fn deserialize_be<R>(target: &mut R) -> Result<u256, DeserializationError>

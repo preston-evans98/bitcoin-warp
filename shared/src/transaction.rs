@@ -1,7 +1,8 @@
 use crate::{self as shared, Cached, Deserializable, DeserializationError};
 use crate::{u256, CompactInt};
-use bytes::BytesMut;
+use bytes::{Buf, BytesMut};
 use serde_derive::{Deserializable, Serializable};
+use warp_crypto::sha256d;
 #[derive(Serializable, Debug)]
 pub struct Transaction {
     version: i32,
@@ -10,6 +11,22 @@ pub struct Transaction {
     hash: Cached<u256>,
 }
 impl Transaction {
+    pub fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {
+        let mut reader = src.reader();
+        let mut tx = Transaction {
+            version: i32::deserialize(&mut reader)?,
+            inputs: <Vec<TxInput>>::deserialize(&mut reader)?,
+            outputs: <Vec<TxOutput>>::deserialize(&mut reader)?,
+            hash: Cached::new(),
+        };
+        let slice = src
+            .get(0..tx.len())
+            .expect("Src must contain whole transaction since we've just read it");
+        let hash_bytes = sha256d(slice);
+        let own_hash = u256::from_bytes(hash_bytes)?;
+        tx.hash = Cached::from(own_hash);
+        Ok(tx)
+    }
     pub fn len(&self) -> usize {
         let mut size = 0;
         size += 4 + CompactInt::size(self.inputs.len());
@@ -33,13 +50,11 @@ impl Transaction {
     pub fn is_coinbase(&self) -> bool {
         self.inputs.len() == 1 && self.inputs[0].is_coinbase_in()
     }
-}
-
-impl Transaction {
-    pub fn deserialize(src: BytesMut) -> Result<Self, DeserializationError> {
-        todo!()
+    pub fn hash(&self) -> Option<&u256> {
+        self.hash.ref_value()
     }
 }
+
 #[derive(Deserializable, Serializable, Debug)]
 pub struct TxInput {
     previous_outpoint: TxOutpoint,

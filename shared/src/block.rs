@@ -1,8 +1,8 @@
-use crate::block_header::BlockHeader;
 use crate::transaction::Transaction;
 use crate::{self as shared, Deserializable, DeserializationError, MerkleTree};
+use crate::{block_header::BlockHeader, merkle_tree};
 use crate::{CompactInt, Serializable};
-use bytes::BytesMut;
+use bytes::{Buf, BytesMut};
 use serde_derive::Serializable;
 #[derive(Serializable, Debug)]
 pub struct Block {
@@ -41,12 +41,17 @@ impl Block {
     /// 1. The block contains exactly one Coinbase transaction, and it's in the first position.
     /// 1. The block does not contain duplicate transactions
     /// 1. The transactions merkle-ize to the root in the block header
-    fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {
-        let header = BlockHeader::deserialize(src)?;
-        let tx_count = CompactInt::deserialize(src)?;
+    pub fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {
+        let header = BlockHeader::deserialize(src.split_to(80))?;
+        let tx_count = {
+            let mut src = src.reader();
+            let tx_count = CompactInt::deserialize(&mut src)?;
+
+            tx_count.value()
+        };
 
         // Reject empty blocks
-        if tx_count.value() == 0 {
+        if tx_count == 0 {
             return Err(DeserializationError::Parse(String::from(
                 "Block contains no transactions",
             )));
@@ -62,22 +67,29 @@ impl Block {
         // TODO: Parse block height
         if header.version() >= 2 {}
 
-        let mut transactions = Vec::with_capacity(tx_count.value() as usize);
-        let mut merkle_tree = MerkleTree::new();
+        let mut transactions = Vec::with_capacity(tx_count as usize);
+        let mut actual_merkle_root = MerkleTree::new();
         transactions.push(first_tx);
 
         // Parse and validate remaining transactions
-        for _ in 1..tx_count.value() {
+        for _ in 1..tx_count {
             let next = Transaction::deserialize(src)?;
             if next.is_coinbase() {
                 return Err(DeserializationError::Parse(String::from(
                     "Block contained second Coinbase",
                 )));
             }
-            merkle_tree.update(next.hash());
+            actual_merkle_root.update(
+                next.hash()
+                    .expect("Deserialized transactions should always have their hash set"),
+            );
             transactions.push(next);
         }
-
+        if !actual_merkle_root.matches(header.merkle_root()) {
+            return Err(DeserializationError::Parse(String::from(
+                "Invalid Merkle Root",
+            )));
+        }
         todo!()
     }
 }
