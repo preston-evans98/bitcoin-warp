@@ -1,4 +1,5 @@
 use crate::command::Command;
+use bytes::BytesMut;
 use serde_derive::Deserializable;
 use shared::{Deserializable, DeserializationError};
 
@@ -16,13 +17,10 @@ pub struct MessageHeader {
 }
 
 impl MessageHeader {
-    pub fn deserialize<T>(
-        target: &mut T,
+    pub fn deserialize(
+        target: &mut BytesMut,
         expected_magic: u32,
-    ) -> Result<MessageHeader, DeserializationError>
-    where
-        T: std::io::Read,
-    {
+    ) -> Result<MessageHeader, DeserializationError> {
         let magic = u32::deserialize(target)?;
         if magic != expected_magic {
             return Err(DeserializationError::parse(&magic.to_le_bytes(), "magic"));

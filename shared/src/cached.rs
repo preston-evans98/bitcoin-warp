@@ -40,10 +40,9 @@ impl<T> Serializable for Cached<T> {
     }
 }
 impl<T> shared::Deserializable for Cached<T> {
-    fn deserialize<R>(_: &mut R) -> std::result::Result<Self, shared::DeserializationError>
-    where
-        R: std::io::Read,
-    {
+    fn deserialize(
+        _: &mut bytes::BytesMut,
+    ) -> std::result::Result<Self, shared::DeserializationError> {
         Ok(Cached(None))
     }
 }

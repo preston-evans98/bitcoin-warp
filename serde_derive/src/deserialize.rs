@@ -19,9 +19,7 @@ pub fn impl_deser_macro(ast: &syn::DeriveInput) -> TokenStream {
 
             let expanded: quote::__private::TokenStream = quote! {
                 impl shared::Deserializable for #name {
-                    fn deserialize<R>(&self, target: &mut R) -> Result<#name, std::io::Error>
-                    where
-                        R: std::io::Read,
+                    fn deserialize(&self, target: &mut BytesMut) -> Result<#name, std::io::Error>
                     {
                         match *self {
                             #(#variants)*
@@ -37,9 +35,7 @@ pub fn impl_deser_macro(ast: &syn::DeriveInput) -> TokenStream {
 
     let expanded = quote! {
         impl shared::Deserializable for #name {
-            fn deserialize<R>(target: &mut R) -> Result<Self, shared::DeserializationError>
-            where
-                R: std::io::Read,
+            fn deserialize(target: &mut BytesMut) -> Result<Self, shared::DeserializationError>
             {
                 Ok(#name {
                     #(#statements)*

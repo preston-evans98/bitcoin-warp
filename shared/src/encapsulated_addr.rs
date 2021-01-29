@@ -31,10 +31,7 @@ impl Serializable for EncapsulatedAddr {
 }
 
 impl Deserializable for EncapsulatedAddr {
-    fn deserialize<R>(target: &mut R) -> Result<Self, DeserializationError>
-    where
-        R: std::io::Read,
-    {
+    fn deserialize(target: &mut bytes::BytesMut) -> Result<Self, DeserializationError> {
         Ok(EncapsulatedAddr {
             time: u32::deserialize(target)?,
             services: u64::deserialize(target)?,

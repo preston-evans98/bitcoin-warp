@@ -1,6 +1,6 @@
 use crate::u256;
 use crate::{Deserializable, DeserializationError, Serializable};
-use byteorder::{LittleEndian, ReadBytesExt};
+use bytes::{Buf, BytesMut};
 
 #[derive(Copy, Clone, Debug)]
 pub enum InventoryType {
@@ -21,11 +21,8 @@ impl Serializable for InventoryType {
     }
 }
 impl Deserializable for InventoryType {
-    fn deserialize<R>(target: &mut R) -> Result<Self, DeserializationError>
-    where
-        R: std::io::Read,
-    {
-        let value = target.read_u32::<LittleEndian>()?;
+    fn deserialize(target: &mut BytesMut) -> Result<Self, DeserializationError> {
+        let value = u32::deserialize(target)?;
         match value {
             1 => Ok(InventoryType::Tx),
 
@@ -75,10 +72,7 @@ impl Serializable for InventoryData {
 }
 
 impl Deserializable for InventoryData {
-    fn deserialize<R>(target: &mut R) -> Result<Self, DeserializationError>
-    where
-        R: std::io::Read,
-    {
+    fn deserialize(target: &mut BytesMut) -> Result<Self, DeserializationError> {
         Ok(InventoryData {
             inventory_type: InventoryType::deserialize(target)?,
             hash: u256::deserialize(target)?,

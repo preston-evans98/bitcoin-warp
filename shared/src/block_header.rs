@@ -1,9 +1,9 @@
 use core::panic;
+use std::borrow::BorrowMut;
 
-use crate::{self as shared, merkle_tree, Cached, Deserializable, Serializable};
+use crate::{self as shared, Cached, Deserializable, Serializable};
 use crate::{u256, DeserializationError};
-use byteorder::{LittleEndian, ReadBytesExt};
-use bytes::{Buf, BytesMut};
+use bytes::BytesMut;
 use serde_derive::Serializable;
 use warp_crypto::sha256d;
 #[derive(Serializable, Debug)]
@@ -16,6 +16,31 @@ pub struct BlockHeader {
     nonce: u32,
     own_hash: Cached<u256>,
     reported_height: Cached<usize>,
+}
+
+impl shared::Deserializable for BlockHeader {
+    fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {
+        let slice = match src.get(0..80) {
+            Some(s) => s,
+            None => {
+                return Err(DeserializationError::Parse(String::from(
+                    "Not enough bytes in block header",
+                )))
+            }
+        };
+        let hash_bytes = sha256d(slice);
+        let own_hash = u256::from_bytes(hash_bytes);
+        Ok(BlockHeader {
+            version: u32::deserialize(src)?,
+            prev_hash: u256::deserialize(src)?,
+            merkle_root: u256::deserialize(src)?,
+            time: u32::deserialize(src)?,
+            target: Nbits::deserialize(src)?,
+            nonce: u32::deserialize(src)?,
+            own_hash: Cached::from(own_hash),
+            reported_height: Cached::new(),
+        })
+    }
 }
 
 impl BlockHeader {
@@ -48,31 +73,11 @@ impl BlockHeader {
             reported_height: Cached::new(),
         }
     }
-    pub fn deserialize(src: BytesMut) -> Result<Self, DeserializationError> {
-        let slice = match src.get(0..80) {
-            Some(s) => s,
-            None => {
-                return Err(DeserializationError::Parse(String::from(
-                    "Not enough bytes in block header",
-                )))
-            }
-        };
-        let hash_bytes = sha256d(slice);
-        let own_hash = u256::from_bytes(hash_bytes)?;
-        let mut reader = src.reader();
-        Ok(BlockHeader {
-            version: u32::deserialize(&mut reader)?,
-            prev_hash: u256::deserialize(&mut reader)?,
-            merkle_root: u256::deserialize(&mut reader)?,
-            time: u32::deserialize(&mut reader)?,
-            target: Nbits::deserialize(&mut reader)?,
-            nonce: u32::deserialize(&mut reader)?,
-            own_hash: Cached::from(own_hash),
-            reported_height: Cached::new(),
-        })
+    pub fn deserialize_owned(mut src: BytesMut) -> Result<Self, DeserializationError> {
+        Self::deserialize(src.borrow_mut())
     }
 
-    pub fn hash(&mut self) -> &u256 {
+    pub fn hash(&self) -> &u256 {
         if self.own_hash.has_value() {
             return self.own_hash.ref_value().unwrap();
         }
@@ -86,10 +91,7 @@ impl BlockHeader {
             self.serialize(&mut writer)
                 .expect("Serialization to vec shouldn't fail");
             let hash = sha256d(&serial);
-            let mut cursor = std::io::Cursor::new(hash);
-            self.own_hash = Cached::from(
-                u256::deserialize(&mut cursor).expect("Deserialization from vec shouldn't fail"),
-            );
+            self.own_hash = Cached::from(u256::from_bytes(hash));
         }
     }
 }
@@ -104,11 +106,9 @@ impl Nbits {
     }
 }
 impl crate::Deserializable for Nbits {
-    fn deserialize<R>(target: &mut R) -> Result<Nbits, crate::DeserializationError>
-    where
-        R: std::io::Read,
-    {
-        let compressed_target = target.read_u32::<LittleEndian>()?;
+    fn deserialize(target: &mut BytesMut) -> Result<Nbits, crate::DeserializationError>
+where {
+        let compressed_target = u32::deserialize(target)?;
         let mantissa: u32 = compressed_target & 0x00FFFFFF;
         // To replicate a bug in core: If the mantissa starts with 0b1, return 0.
         if mantissa & 0x00800000 != 0 {
@@ -126,7 +126,7 @@ impl crate::Deserializable for Nbits {
             raw_target[exponent as usize] = (mantissa >> (8 * i)) as u8;
         }
         Ok(Nbits {
-            target: u256::deserialize(&mut std::io::Cursor::new(raw_target))?,
+            target: u256::from_bytes(raw_target),
         })
         // ** Alternative Implementation. TODO: Compare performance
         // let mut mantissa = [0u8; 3];
@@ -261,156 +261,163 @@ impl crate::Serializable for Nbits {
 // }
 
 #[cfg(test)]
-#[test]
-fn deser_nbits_zero() {
-    use crate::{Deserializable, Serializable};
-    let encoded: u32 = 0x01003456;
-    let mut input = Vec::with_capacity(4);
-    encoded.serialize(&mut input).unwrap();
-    let mut cursor = std::io::Cursor::new(input);
-    let nbits = Nbits::deserialize(&mut cursor).unwrap();
-    // assert_eq!(format!("{:?}", nbits.target), "");
-    assert_eq!(nbits.target.to_hex(), "0")
-}
-
-#[test]
-fn deser_nbits_zero_2() {
-    use crate::{Deserializable, Serializable};
-    let encoded: u32 = 0;
-    let mut input = Vec::with_capacity(4);
-    encoded.serialize(&mut input).unwrap();
-    let mut cursor = std::io::Cursor::new(input);
-    let nbits = Nbits::deserialize(&mut cursor).unwrap();
-    // assert_eq!(format!("{:?}", nbits.target), "");
-    assert_eq!(nbits.target.to_hex(), "0")
-}
-
-#[test]
-fn ser_nbits_zero() {
-    use crate::Serializable;
-    let target = u256::from(0x00);
-    let nbits = Nbits::new(target);
-    let mut out = Vec::with_capacity(4);
-    nbits.serialize(&mut out).unwrap();
-    let mut cursor = std::io::Cursor::new(out);
-    let result = cursor.read_u32::<LittleEndian>().unwrap();
-    assert_eq!(result, 0)
-}
-
-#[test]
-fn deser_nbits_twelve() {
+mod tests {
     use crate::Deserializable;
-    use crate::Serializable;
-    let encoded: u32 = 0x01123456;
-    let mut input = Vec::with_capacity(4);
-    encoded.serialize(&mut input).unwrap();
-    let mut cursor = std::io::Cursor::new(input);
-    let nbits = Nbits::deserialize(&mut cursor).unwrap();
-    // assert_eq!(format!("{:?}", nbits.target), "");
-    assert_eq!(nbits.target.to_hex(), "12")
-}
+    use crate::{u256, Nbits};
+    use byteorder::{LittleEndian, ReadBytesExt};
+    use bytes::BytesMut;
+    use std::iter::FromIterator;
+    #[test]
+    fn deser_nbits_zero() {
+        use crate::Serializable;
+        let encoded: u32 = 0x01003456;
+        let mut input = Vec::with_capacity(4);
+        encoded.serialize(&mut input).unwrap();
+        let mut cursor = BytesMut::from_iter(input.iter());
+        let nbits = Nbits::deserialize(&mut cursor).unwrap();
+        // assert_eq!(format!("{:?}", nbits.target), "");
+        assert_eq!(nbits.target.to_hex(), "0")
+    }
 
-#[test]
-fn ser_nbits_twelve() {
-    use crate::Serializable;
-    let target = u256::from(0x12);
-    let nbits = Nbits::new(target);
-    let mut out = Vec::with_capacity(4);
-    nbits.serialize(&mut out).unwrap();
-    let mut cursor = std::io::Cursor::new(out);
-    let result = cursor.read_u32::<LittleEndian>().unwrap();
-    println!("{:x}", result);
-    assert_eq!(result, 0x01120000);
-}
+    #[test]
+    fn deser_nbits_zero_2() {
+        use crate::{Deserializable, Serializable};
+        let encoded: u32 = 0;
+        let mut input = Vec::with_capacity(4);
+        encoded.serialize(&mut input).unwrap();
+        let mut cursor = BytesMut::from_iter(input.iter());
+        let nbits = Nbits::deserialize(&mut cursor).unwrap();
+        // assert_eq!(format!("{:?}", nbits.target), "");
+        assert_eq!(nbits.target.to_hex(), "0")
+    }
 
-#[test]
-fn deser_nbits_eighty() {
-    use crate::Deserializable;
-    use crate::Serializable;
-    let encoded: u32 = 0x02008000;
-    let mut input = Vec::with_capacity(4);
-    encoded.serialize(&mut input).unwrap();
-    let mut cursor = std::io::Cursor::new(input);
-    let nbits = Nbits::deserialize(&mut cursor).unwrap();
-    // assert_eq!(format!("{:?}", nbits.target), "");
-    assert_eq!(nbits.target.to_hex(), "80")
-}
+    #[test]
+    fn ser_nbits_zero() {
+        use crate::Serializable;
+        let target = u256::from(0x00);
+        let nbits = Nbits::new(target);
+        let mut out = Vec::with_capacity(4);
+        nbits.serialize(&mut out).unwrap();
+        let mut cursor = std::io::Cursor::new(out);
+        let result = cursor.read_u32::<LittleEndian>().unwrap();
+        assert_eq!(result, 0)
+    }
 
-#[test]
-fn ser_nbits_eighty() {
-    use crate::Serializable;
-    let target = u256::from(0x80);
-    let nbits = Nbits::new(target);
-    let mut out = Vec::with_capacity(4);
-    nbits.serialize(&mut out).unwrap();
-    let mut cursor = std::io::Cursor::new(out);
-    let result = cursor.read_u32::<LittleEndian>().unwrap();
-    println!("{:x}", result);
-    assert_eq!(result, 0x02008000);
-}
+    #[test]
+    fn deser_nbits_twelve() {
+        use crate::Deserializable;
+        use crate::Serializable;
+        let encoded: u32 = 0x01123456;
+        let mut input = Vec::with_capacity(4);
+        encoded.serialize(&mut input).unwrap();
+        let mut cursor = BytesMut::from_iter(input.iter());
+        let nbits = Nbits::deserialize(&mut cursor).unwrap();
+        // assert_eq!(format!("{:?}", nbits.target), "");
+        assert_eq!(nbits.target.to_hex(), "12")
+    }
 
-// 0x05009234
-#[test]
-fn deser_nbits_big() {
-    use crate::Deserializable;
-    use crate::Serializable;
-    let encoded: u32 = 0x05009234;
-    let mut input = Vec::with_capacity(4);
-    encoded.serialize(&mut input).unwrap();
-    let mut cursor = std::io::Cursor::new(input);
-    let nbits = Nbits::deserialize(&mut cursor).unwrap();
-    // assert_eq!(format!("{:?}", nbits.target), "");
-    assert_eq!(nbits.target.to_hex(), "92340000")
-}
+    #[test]
+    fn ser_nbits_twelve() {
+        use crate::Serializable;
+        let target = u256::from(0x12);
+        let nbits = Nbits::new(target);
+        let mut out = Vec::with_capacity(4);
+        nbits.serialize(&mut out).unwrap();
+        let mut cursor = std::io::Cursor::new(out);
+        let result = cursor.read_u32::<LittleEndian>().unwrap();
+        println!("{:x}", result);
+        assert_eq!(result, 0x01120000);
+    }
 
-#[test]
-fn ser_nbits_big() {
-    use crate::Serializable;
-    let target = u256::from(0x92340000);
-    let nbits = Nbits::new(target);
-    let mut out = Vec::with_capacity(4);
-    nbits.serialize(&mut out).unwrap();
-    let mut cursor = std::io::Cursor::new(out);
-    let result = cursor.read_u32::<LittleEndian>().unwrap();
-    println!("{:x}", result);
-    assert_eq!(result, 0x05009234);
-}
+    #[test]
+    fn deser_nbits_eighty() {
+        use crate::Deserializable;
+        use crate::Serializable;
+        let encoded: u32 = 0x02008000;
+        let mut input = Vec::with_capacity(4);
+        encoded.serialize(&mut input).unwrap();
+        let mut cursor = BytesMut::from_iter(input.iter());
+        let nbits = Nbits::deserialize(&mut cursor).unwrap();
+        // assert_eq!(format!("{:?}", nbits.target), "");
+        assert_eq!(nbits.target.to_hex(), "80")
+    }
 
-#[test]
-fn deser_nbits_neg() {
-    use crate::Deserializable;
-    use crate::Serializable;
-    let encoded: u32 = 0x04923456;
-    let mut input = Vec::with_capacity(4);
-    encoded.serialize(&mut input).unwrap();
-    let mut cursor = std::io::Cursor::new(input);
-    let nbits = Nbits::deserialize(&mut cursor).unwrap();
-    // assert_eq!(format!("{:?}", nbits.target), "");
-    assert_eq!(nbits.target.to_hex(), "0")
-}
+    #[test]
+    fn ser_nbits_eighty() {
+        use crate::Serializable;
+        let target = u256::from(0x80);
+        let nbits = Nbits::new(target);
+        let mut out = Vec::with_capacity(4);
+        nbits.serialize(&mut out).unwrap();
+        let mut cursor = std::io::Cursor::new(out);
+        let result = cursor.read_u32::<LittleEndian>().unwrap();
+        println!("{:x}", result);
+        assert_eq!(result, 0x02008000);
+    }
 
-#[test]
-fn deser_nbits_nonneg() {
-    use crate::Deserializable;
-    use crate::Serializable;
-    let encoded: u32 = 0x04123456;
-    let mut input = Vec::with_capacity(4);
-    encoded.serialize(&mut input).unwrap();
-    let mut cursor = std::io::Cursor::new(input);
-    let nbits = Nbits::deserialize(&mut cursor).unwrap();
-    // assert_eq!(format!("{:?}", nbits.target), "");
-    assert_eq!(nbits.target.to_hex(), "12345600")
-}
+    // 0x05009234
+    #[test]
+    fn deser_nbits_big() {
+        use crate::Deserializable;
+        use crate::Serializable;
+        let encoded: u32 = 0x05009234;
+        let mut input = Vec::with_capacity(4);
+        encoded.serialize(&mut input).unwrap();
+        let mut cursor = BytesMut::from_iter(input.iter());
+        let nbits = Nbits::deserialize(&mut cursor).unwrap();
+        // assert_eq!(format!("{:?}", nbits.target), "");
+        assert_eq!(nbits.target.to_hex(), "92340000")
+    }
 
-#[test]
-fn ser_nbits_noneg() {
-    use crate::Serializable;
-    let target = u256::from(0x12345600);
-    let nbits = Nbits::new(target);
-    let mut out = Vec::with_capacity(4);
-    nbits.serialize(&mut out).unwrap();
-    let mut cursor = std::io::Cursor::new(out);
-    let result = cursor.read_u32::<LittleEndian>().unwrap();
-    println!("{:x}", result);
-    assert_eq!(result, 0x04123456);
+    #[test]
+    fn ser_nbits_big() {
+        use crate::Serializable;
+        let target = u256::from(0x92340000);
+        let nbits = Nbits::new(target);
+        let mut out = Vec::with_capacity(4);
+        nbits.serialize(&mut out).unwrap();
+        let mut cursor = std::io::Cursor::new(out);
+        let result = cursor.read_u32::<LittleEndian>().unwrap();
+        println!("{:x}", result);
+        assert_eq!(result, 0x05009234);
+    }
+
+    #[test]
+    fn deser_nbits_neg() {
+        use crate::Deserializable;
+        use crate::Serializable;
+        let encoded: u32 = 0x04923456;
+        let mut input = Vec::with_capacity(4);
+        encoded.serialize(&mut input).unwrap();
+        let mut cursor = BytesMut::from_iter(input.iter());
+        let nbits = Nbits::deserialize(&mut cursor).unwrap();
+        // assert_eq!(format!("{:?}", nbits.target), "");
+        assert_eq!(nbits.target.to_hex(), "0")
+    }
+
+    #[test]
+    fn deser_nbits_nonneg() {
+        use crate::Deserializable;
+        use crate::Serializable;
+        let encoded: u32 = 0x04123456;
+        let mut input = Vec::with_capacity(4);
+        encoded.serialize(&mut input).unwrap();
+        let mut cursor = BytesMut::from_iter(input.iter());
+        let nbits = Nbits::deserialize(&mut cursor).unwrap();
+        // assert_eq!(format!("{:?}", nbits.target), "");
+        assert_eq!(nbits.target.to_hex(), "12345600")
+    }
+
+    #[test]
+    fn ser_nbits_noneg() {
+        use crate::Serializable;
+        let target = u256::from(0x12345600);
+        let nbits = Nbits::new(target);
+        let mut out = Vec::with_capacity(4);
+        nbits.serialize(&mut out).unwrap();
+        let mut cursor = std::io::Cursor::new(out);
+        let result = cursor.read_u32::<LittleEndian>().unwrap();
+        println!("{:x}", result);
+        assert_eq!(result, 0x04123456);
+    }
 }

@@ -1,11 +1,11 @@
-use crate::{command::Command, BitcoinCodec, Message, NetworkRequest};
+use crate::{command::Command, BitcoinCodec, Message};
 use config::Config;
 use futures::prelude::*;
 use shared::DeserializationError;
 use std::net::SocketAddr;
 use std::time::Duration;
 use std::{fmt, sync::Arc};
-use tower::Service;
+// use tower::Service;
 // use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio::time::timeout;

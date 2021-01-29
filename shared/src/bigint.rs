@@ -1,6 +1,7 @@
 use crate::deserializable::{Deserializable, DeserializationError};
 use crate::serializable::Serializable;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
+use bytes::{Buf, BytesMut};
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Hash)]
@@ -30,9 +31,22 @@ impl u256 {
         let mut cursor = std::io::Cursor::new(target);
         u256::deserialize_be(&mut cursor)
     }
-    pub fn from_bytes(target: [u8; 32]) -> Result<u256, DeserializationError> {
-        let mut cursor = std::io::Cursor::new(target);
-        u256::deserialize(&mut cursor)
+    pub fn from_bytes(target: [u8; 32]) -> u256 {
+        let mut target = std::io::Cursor::new(target);
+        u256([
+            target
+                .read_u64::<LittleEndian>()
+                .expect("Cursro must contain at least 32 bytes"),
+            target
+                .read_u64::<LittleEndian>()
+                .expect("Cursro must contain at least 32 bytes"),
+            target
+                .read_u64::<LittleEndian>()
+                .expect("Cursro must contain at least 32 bytes"),
+            target
+                .read_u64::<LittleEndian>()
+                .expect("Cursro must contain at least 32 bytes"),
+        ])
     }
 
     // A big_endian counterpart to deser
@@ -114,15 +128,12 @@ impl Serializable for &u256 {
 }
 
 impl Deserializable for u256 {
-    fn deserialize<R>(target: &mut R) -> Result<u256, DeserializationError>
-    where
-        R: std::io::Read,
-    {
+    fn deserialize(target: &mut BytesMut) -> Result<u256, DeserializationError> {
         Ok(u256([
-            target.read_u64::<LittleEndian>()?,
-            target.read_u64::<LittleEndian>()?,
-            target.read_u64::<LittleEndian>()?,
-            target.read_u64::<LittleEndian>()?,
+            target.get_u64_le(),
+            target.get_u64_le(),
+            target.get_u64_le(),
+            target.get_u64_le(),
         ]))
     }
 }
@@ -137,11 +148,12 @@ impl Eq for u256 {}
 
 #[test]
 fn test_u256_ser_deser() {
+    use std::iter::FromIterator;
     let expected = u256([1, 2, 3, 4]);
     let mut serial: Vec<u8> = Vec::with_capacity(32);
     expected.serialize(&mut serial).unwrap();
-    let mut de_cursor = std::io::Cursor::new(serial);
-    let actual = u256::deserialize(&mut de_cursor).unwrap();
+    let mut de_target = BytesMut::from_iter(serial.iter());
+    let actual = u256::deserialize(&mut de_target).unwrap();
     assert_eq!(expected, actual);
 }
 

@@ -1,8 +1,8 @@
+use crate::block_header::BlockHeader;
 use crate::transaction::Transaction;
 use crate::{self as shared, Deserializable, DeserializationError, MerkleTree};
-use crate::{block_header::BlockHeader, merkle_tree};
 use crate::{CompactInt, Serializable};
-use bytes::{Buf, BytesMut};
+use bytes::BytesMut;
 use serde_derive::Serializable;
 #[derive(Serializable, Debug)]
 pub struct Block {
@@ -41,12 +41,10 @@ impl Block {
     /// 1. The block contains exactly one Coinbase transaction, and it's in the first position.
     /// 1. The block does not contain duplicate transactions
     /// 1. The transactions merkle-ize to the root in the block header
-    pub fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {
-        let header = BlockHeader::deserialize(src.split_to(80))?;
+    pub fn deserialize(mut src: &mut BytesMut) -> Result<Self, DeserializationError> {
+        let header = BlockHeader::deserialize_owned(src.split_to(80))?;
         let tx_count = {
-            let mut src = src.reader();
             let tx_count = CompactInt::deserialize(&mut src)?;
-
             tx_count.value()
         };
 

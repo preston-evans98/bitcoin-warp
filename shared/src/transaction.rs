@@ -1,6 +1,6 @@
 use crate::{self as shared, Cached, Deserializable, DeserializationError};
 use crate::{u256, CompactInt};
-use bytes::{Buf, BytesMut};
+use bytes::BytesMut;
 use serde_derive::{Deserializable, Serializable};
 use warp_crypto::sha256d;
 #[derive(Serializable, Debug)]
@@ -10,23 +10,25 @@ pub struct Transaction {
     outputs: Vec<TxOutput>,
     hash: Cached<u256>,
 }
-impl Transaction {
-    pub fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {
-        let mut reader = src.reader();
+
+impl Deserializable for Transaction {
+    fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {
         let mut tx = Transaction {
-            version: i32::deserialize(&mut reader)?,
-            inputs: <Vec<TxInput>>::deserialize(&mut reader)?,
-            outputs: <Vec<TxOutput>>::deserialize(&mut reader)?,
+            version: i32::deserialize(src)?,
+            inputs: <Vec<TxInput>>::deserialize(src)?,
+            outputs: <Vec<TxOutput>>::deserialize(src)?,
             hash: Cached::new(),
         };
         let slice = src
             .get(0..tx.len())
             .expect("Src must contain whole transaction since we've just read it");
         let hash_bytes = sha256d(slice);
-        let own_hash = u256::from_bytes(hash_bytes)?;
+        let own_hash = u256::from_bytes(hash_bytes);
         tx.hash = Cached::from(own_hash);
         Ok(tx)
     }
+}
+impl Transaction {
     pub fn len(&self) -> usize {
         let mut size = 0;
         size += 4 + CompactInt::size(self.inputs.len());
