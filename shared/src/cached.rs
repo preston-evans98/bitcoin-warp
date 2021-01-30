@@ -1,4 +1,5 @@
 use crate::{self as shared, Serializable};
+use bytes::Buf;
 
 /// A Cached type is an option that is never serialized.
 ///
@@ -27,12 +28,12 @@ impl<T> Cached<T> {
 }
 
 impl<T> std::fmt::Debug for Cached<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Ok(())
     }
 }
 impl<T> Serializable for Cached<T> {
-    fn serialize<W>(&self, target: &mut W) -> Result<(), std::io::Error>
+    fn serialize<W>(&self, _: &mut W) -> Result<(), std::io::Error>
     where
         W: std::io::Write,
     {
@@ -40,9 +41,7 @@ impl<T> Serializable for Cached<T> {
     }
 }
 impl<T> shared::Deserializable for Cached<T> {
-    fn deserialize(
-        _: &mut bytes::BytesMut,
-    ) -> std::result::Result<Self, shared::DeserializationError> {
+    fn deserialize<B: Buf>(_: B) -> std::result::Result<Self, shared::DeserializationError> {
         Ok(Cached(None))
     }
 }

@@ -1,6 +1,6 @@
-use std::net::SocketAddr;
-
 use crate::{Deserializable, DeserializationError, Serializable};
+use bytes::Buf;
+use std::net::SocketAddr;
 
 #[derive(Debug)]
 pub struct EncapsulatedAddr {
@@ -31,11 +31,11 @@ impl Serializable for EncapsulatedAddr {
 }
 
 impl Deserializable for EncapsulatedAddr {
-    fn deserialize(target: &mut bytes::BytesMut) -> Result<Self, DeserializationError> {
+    fn deserialize<B: Buf>(mut target: B) -> Result<Self, DeserializationError> {
         Ok(EncapsulatedAddr {
-            time: u32::deserialize(target)?,
-            services: u64::deserialize(target)?,
-            addr: SocketAddr::deserialize(target)?,
+            time: u32::deserialize(&mut target)?,
+            services: u64::deserialize(&mut target)?,
+            addr: SocketAddr::deserialize(&mut target)?,
         })
     }
 }

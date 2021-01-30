@@ -301,7 +301,7 @@ impl Codec {
         Ok(())
     }
 
-    fn deserialize(&mut self, src: &mut BytesMut) -> Result<Message, DeserializationError> {
+    fn deserialize(&mut self, mut src: &mut BytesMut) -> Result<Message, DeserializationError> {
         match self.state {
             DecoderState::Header => {
                 unreachable!(
@@ -311,83 +311,83 @@ impl Codec {
             DecoderState::Body { ref header } => {
                 let msg = match header.get_command() {
                     crate::Command::Addr => {
-                        let addrs = Vec::<EncapsulatedAddr>::deserialize(src)?;
+                        let addrs = Vec::<EncapsulatedAddr>::deserialize(&mut src)?;
                         Message::Addr { addrs }
                     }
                     crate::Command::Version => Message::Version {
-                        protocol_version: ProtocolVersion::deserialize(src)?,
-                        services: Services::deserialize(src)?,
-                        timestamp: u64::deserialize(src)?,
-                        receiver_services: Services::deserialize(src)?,
-                        receiver: std::net::SocketAddr::deserialize(src)?,
-                        transmitter_services: Services::deserialize(src)?,
-                        transmitter_ip: std::net::SocketAddr::deserialize(src)?,
-                        nonce: Nonce::deserialize(src)?,
-                        user_agent: String::deserialize(src)?,
-                        best_block: u32::deserialize(src)?,
-                        relay: bool::deserialize(src)?,
+                        protocol_version: ProtocolVersion::deserialize(&mut src)?,
+                        services: Services::deserialize(&mut src)?,
+                        timestamp: u64::deserialize(&mut src)?,
+                        receiver_services: Services::deserialize(&mut src)?,
+                        receiver: std::net::SocketAddr::deserialize(&mut src)?,
+                        transmitter_services: Services::deserialize(&mut src)?,
+                        transmitter_ip: std::net::SocketAddr::deserialize(&mut src)?,
+                        nonce: Nonce::deserialize(&mut src)?,
+                        user_agent: String::deserialize(&mut src)?,
+                        best_block: u32::deserialize(&mut src)?,
+                        relay: bool::deserialize(&mut src)?,
                     },
                     crate::Command::Verack => Message::Verack {},
                     crate::Command::GetBlocks => Message::GetBlocks {
-                        protocol_version: ProtocolVersion::deserialize(src)?,
-                        block_header_hashes: <Vec<u256>>::deserialize(src)?,
-                        stop_hash: u256::deserialize(src)?,
+                        protocol_version: ProtocolVersion::deserialize(&mut src)?,
+                        block_header_hashes: <Vec<u256>>::deserialize(&mut src)?,
+                        stop_hash: u256::deserialize(&mut src)?,
                     },
                     crate::Command::GetData => Message::GetData {
-                        inventory: <Vec<InventoryData>>::deserialize(src)?,
+                        inventory: <Vec<InventoryData>>::deserialize(&mut src)?,
                     },
                     crate::Command::Block => Message::Block {
-                        block: shared::Block::deserialize(src)?,
+                        block: shared::Block::deserialize(&mut src)?,
                     },
                     crate::Command::GetHeaders => Message::GetHeaders {
-                        protocol_version: ProtocolVersion::deserialize(src)?,
-                        block_header_hashes: <Vec<u256>>::deserialize(src)?,
-                        stop_hash: u256::deserialize(src)?,
+                        protocol_version: ProtocolVersion::deserialize(&mut src)?,
+                        block_header_hashes: <Vec<u256>>::deserialize(&mut src)?,
+                        stop_hash: u256::deserialize(&mut src)?,
                     },
                     crate::Command::Headers => {
                         // Custom deserialization necessary to account for extra
                         // Transaction count field. Note that transaction count is always zero in a headers message.
-                        let count = CompactInt::deserialize(src)?;
+                        let count = CompactInt::deserialize(&mut src)?;
                         let mut result = Vec::with_capacity(count.value() as usize);
                         for _ in 0..result.len() {
-                            result.push(BlockHeader::deserialize(src)?);
-                            let _ = u8::deserialize(src)?;
+                            result.push(BlockHeader::deserialize(&mut src)?);
+                            let _ = u8::deserialize(&mut src)?;
                         }
                         Message::Headers { headers: result }
                     }
                     crate::Command::Inv => Message::Inv {
-                        inventory: <Vec<InventoryData>>::deserialize(src)?,
+                        inventory: <Vec<InventoryData>>::deserialize(&mut src)?,
                     },
                     crate::Command::MemPool => Message::MemPool {},
                     crate::Command::MerkleBlock => Message::MerkleBlock {
-                        block_header: BlockHeader::deserialize(src)?,
-                        transaction_count: u32::deserialize(src)?,
-                        hashes: <Vec<u256>>::deserialize(src)?,
-                        flags: <Vec<u8>>::deserialize(src)?,
+                        block_header: BlockHeader::deserialize(&mut src)?,
+                        transaction_count: u32::deserialize(&mut src)?,
+                        hashes: <Vec<u256>>::deserialize(&mut src)?,
+                        flags: <Vec<u8>>::deserialize(&mut src)?,
                     },
                     crate::Command::CmpctBlock => Message::CompactBlock {
-                        header: BlockHeader::deserialize(src)?,
-                        nonce: Nonce::deserialize(src)?,
-                        short_ids: <Vec<u64>>::deserialize(src)?,
-                        prefilled_txns: <Vec<PrefilledTransaction>>::deserialize(src)?,
+                        header: BlockHeader::deserialize(&mut src)?,
+                        nonce: Nonce::deserialize(&mut src)?,
+                        short_ids: <Vec<u64>>::deserialize(&mut src)?,
+                        prefilled_txns: <Vec<PrefilledTransaction>>::deserialize(&mut src)?,
                     },
                     crate::Command::GetBlockTxn => Message::GetBlockTxn {
-                        block_hash: <[u8; 32]>::deserialize(src)?,
-                        indexes: <Vec<CompactInt>>::deserialize(src)?,
+                        block_hash: <[u8; 32]>::deserialize(&mut src)?,
+                        indexes: <Vec<CompactInt>>::deserialize(&mut src)?,
                     },
                     crate::Command::BlockTxn => Message::BlockTxn {
-                        block_hash: <[u8; 32]>::deserialize(src)?,
-                        txs: <Vec<Transaction>>::deserialize(src)?,
+                        block_hash: <[u8; 32]>::deserialize(&mut src)?,
+                        txs: <Vec<Transaction>>::deserialize(&mut src)?,
                     },
                     crate::Command::SendCmpct => Message::SendCompact {
-                        announce: bool::deserialize(src)?,
-                        version: u64::deserialize(src)?,
+                        announce: bool::deserialize(&mut src)?,
+                        version: u64::deserialize(&mut src)?,
                     },
                     crate::Command::NotFound => Message::NotFound {
-                        inventory_data: <Vec<InventoryData>>::deserialize(src)?,
+                        inventory_data: <Vec<InventoryData>>::deserialize(&mut src)?,
                     },
                     crate::Command::Tx => Message::Tx {
-                        transaction: Transaction::deserialize(src)?,
+                        transaction: Transaction::deserialize(&mut src)?,
                     },
                     crate::Command::Alert => {
                         // TODO: Verify that no additional cleanup is required.
@@ -397,30 +397,30 @@ impl Codec {
                         )));
                     }
                     crate::Command::FeeFilter => Message::FeeFilter {
-                        feerate: u64::deserialize(src)?,
+                        feerate: u64::deserialize(&mut src)?,
                     },
                     crate::Command::FilterAdd => Message::FilterAdd {
-                        elements: <Vec<Vec<u8>>>::deserialize(src)?,
+                        elements: <Vec<Vec<u8>>>::deserialize(&mut src)?,
                     },
                     crate::Command::FilterClear => Message::FilterClear {},
                     crate::Command::FilterLoad => Message::FilterLoad {
-                        filter: <Vec<u8>>::deserialize(src)?,
-                        n_hash_funcs: u32::deserialize(src)?,
-                        n_tweak: u32::deserialize(src)?,
-                        n_flags: u8::deserialize(src)?,
+                        filter: <Vec<u8>>::deserialize(&mut src)?,
+                        n_hash_funcs: u32::deserialize(&mut src)?,
+                        n_tweak: u32::deserialize(&mut src)?,
+                        n_flags: u8::deserialize(&mut src)?,
                     },
                     crate::Command::GetAddr => Message::GetAddr {},
                     crate::Command::Ping => Message::Ping {
-                        nonce: Nonce::deserialize(src)?,
+                        nonce: Nonce::deserialize(&mut src)?,
                     },
                     crate::Command::Pong => Message::Pong {
-                        nonce: Nonce::deserialize(src)?,
+                        nonce: Nonce::deserialize(&mut src)?,
                     },
                     crate::Command::Reject => Message::Reject {
-                        message: String::deserialize(src)?,
-                        code: u8::deserialize(src)?,
-                        reason: String::deserialize(src)?,
-                        extra_data: <[u8; 32]>::deserialize(src).ok(),
+                        message: String::deserialize(&mut src)?,
+                        code: u8::deserialize(&mut src)?,
+                        reason: String::deserialize(&mut src)?,
+                        extra_data: <[u8; 32]>::deserialize(&mut src).ok(),
                     },
                     crate::Command::SendHeaders => Message::SendHeaders {},
                 };

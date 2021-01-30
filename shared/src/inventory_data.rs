@@ -1,6 +1,6 @@
 use crate::u256;
 use crate::{Deserializable, DeserializationError, Serializable};
-use bytes::{Buf, BytesMut};
+use bytes::Buf;
 
 #[derive(Copy, Clone, Debug)]
 pub enum InventoryType {
@@ -21,7 +21,7 @@ impl Serializable for InventoryType {
     }
 }
 impl Deserializable for InventoryType {
-    fn deserialize(target: &mut BytesMut) -> Result<Self, DeserializationError> {
+    fn deserialize<B: Buf>(target: B) -> Result<Self, DeserializationError> {
         let value = u32::deserialize(target)?;
         match value {
             1 => Ok(InventoryType::Tx),
@@ -72,10 +72,10 @@ impl Serializable for InventoryData {
 }
 
 impl Deserializable for InventoryData {
-    fn deserialize(target: &mut BytesMut) -> Result<Self, DeserializationError> {
+    fn deserialize<B: Buf>(mut target: B) -> Result<Self, DeserializationError> {
         Ok(InventoryData {
-            inventory_type: InventoryType::deserialize(target)?,
-            hash: u256::deserialize(target)?,
+            inventory_type: InventoryType::deserialize(&mut target)?,
+            hash: u256::deserialize(&mut target)?,
         })
     }
 }

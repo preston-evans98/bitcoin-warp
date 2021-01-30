@@ -42,7 +42,7 @@ impl Block {
     /// 1. The block does not contain duplicate transactions
     /// 1. The transactions merkle-ize to the root in the block header
     pub fn deserialize(mut src: &mut BytesMut) -> Result<Self, DeserializationError> {
-        let header = BlockHeader::deserialize_owned(src.split_to(80))?;
+        let header = BlockHeader::deserialize(src.split_to(80))?;
         let tx_count = {
             let tx_count = CompactInt::deserialize(&mut src)?;
             tx_count.value()
@@ -56,7 +56,7 @@ impl Block {
         }
 
         // Deserialize and structurally validate Coinbase
-        let first_tx = Transaction::deserialize(src)?;
+        let first_tx = Transaction::deserialize(&mut src)?;
         if !first_tx.is_coinbase() {
             return Err(DeserializationError::Parse(String::from(
                 "Block did not contain Coinbase in first position",
@@ -71,7 +71,7 @@ impl Block {
 
         // Parse and validate remaining transactions
         for _ in 1..tx_count {
-            let next = Transaction::deserialize(src)?;
+            let next = Transaction::deserialize(&mut src)?;
             if next.is_coinbase() {
                 return Err(DeserializationError::Parse(String::from(
                     "Block contained second Coinbase",

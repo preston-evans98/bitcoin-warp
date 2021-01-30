@@ -1,4 +1,4 @@
-use bytes::BytesMut;
+use bytes::Buf;
 use shared::{Deserializable, DeserializationError, Serializable};
 
 /// A shorthand way of referring to a type of [Message](crate::Message). A `Command` is a single byte, while a [Message](crate::Message) is about 90 bytes.
@@ -76,9 +76,15 @@ impl Serializable for Command {
 }
 
 impl Deserializable for Command {
-    fn deserialize(reader: &mut BytesMut) -> Result<Command, DeserializationError> {
-        let buf = &reader.split_to(12)[..12];
-        let command = match buf {
+    fn deserialize<B: Buf>(mut reader: B) -> Result<Command, DeserializationError> {
+        if reader.remaining() > 12 {
+            return Err(DeserializationError::Parse(String::from(
+                "Not enough data left in reader to deserialize Command",
+            )));
+        }
+        // Note: this is a zero-copy op if the underlying is bytes/bytesmut
+        let buf = reader.copy_to_bytes(12);
+        let command = match &buf[..12] {
             b"version\0\0\0\0\0" => Command::Version,
             b"verack\0\0\0\0\0\0" => Command::Verack,
             b"getblocks\0\0\0" => Command::GetBlocks,
@@ -106,7 +112,7 @@ impl Deserializable for Command {
             b"pong\0\0\0\0\0\0\0\0" => Command::Pong,
             b"reject\0\0\0\0\0\0" => Command::Reject,
             b"sendheaders\0" => Command::SendHeaders,
-            _ => return Err(DeserializationError::parse(buf, "Command")),
+            _ => return Err(DeserializationError::parse(&buf, "Command")),
         };
         Ok(command)
     }

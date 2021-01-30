@@ -1,5 +1,5 @@
 use crate::CompactInt;
-use bytes::{Buf, BytesMut};
+use bytes::Buf;
 use std::error::Error;
 use std::net::SocketAddr;
 use std::{fmt, io};
@@ -38,13 +38,20 @@ impl From<io::Error> for DeserializationError {
 type Result<R> = std::result::Result<R, DeserializationError>;
 
 pub trait Deserializable {
-    fn deserialize(reader: &mut BytesMut) -> Result<Self>
+    fn deserialize<B: Buf>(target: B) -> Result<Self>
     where
         Self: Sized;
 }
 
+fn out_of_data(ty: &str) -> DeserializationError {
+    DeserializationError::Parse(format!("Not enough data to in buffer to read {}", ty))
+}
+
 impl Deserializable for bool {
-    fn deserialize(target: &mut BytesMut) -> Result<bool> {
+    fn deserialize<B: Buf>(mut target: B) -> Result<bool> {
+        if !target.has_remaining() {
+            return Err(out_of_data("u8"));
+        }
         let value = target.get_u8();
         match value {
             0 => Ok(false),
@@ -57,37 +64,55 @@ impl Deserializable for bool {
     }
 }
 impl Deserializable for u8 {
-    fn deserialize(target: &mut BytesMut) -> Result<u8> {
+    fn deserialize<B: Buf>(mut target: B) -> Result<u8> {
+        if !target.has_remaining() {
+            return Err(out_of_data("u8"));
+        }
         Ok(target.get_u8())
     }
 }
 
 impl Deserializable for u16 {
-    fn deserialize(target: &mut BytesMut) -> Result<u16> {
+    fn deserialize<B: Buf>(mut target: B) -> Result<u16> {
+        if target.remaining() < 2 {
+            return Err(out_of_data("u16"));
+        }
         Ok(target.get_u16_le())
     }
 }
 
 impl Deserializable for u32 {
-    fn deserialize(target: &mut BytesMut) -> Result<u32> {
+    fn deserialize<B: Buf>(mut target: B) -> Result<u32> {
+        if target.remaining() < 4 {
+            return Err(out_of_data("u32"));
+        }
         Ok(target.get_u32_le())
     }
 }
 
 impl Deserializable for u64 {
-    fn deserialize(target: &mut BytesMut) -> Result<u64> {
+    fn deserialize<B: Buf>(mut target: B) -> Result<u64> {
+        if target.remaining() < 8 {
+            return Err(out_of_data("u64"));
+        }
         Ok(target.get_u64_le())
     }
 }
 
 impl Deserializable for i32 {
-    fn deserialize(target: &mut BytesMut) -> Result<i32> {
+    fn deserialize<B: Buf>(mut target: B) -> Result<i32> {
+        if target.remaining() < 4 {
+            return Err(out_of_data("i32"));
+        }
         Ok(target.get_i32_le())
     }
 }
 
 impl Deserializable for i64 {
-    fn deserialize(target: &mut BytesMut) -> Result<i64> {
+    fn deserialize<B: Buf>(mut target: B) -> Result<i64> {
+        if target.remaining() < 8 {
+            return Err(out_of_data("i64"));
+        }
         Ok(target.get_i64_le())
     }
 }
@@ -96,19 +121,23 @@ impl<T> Deserializable for Vec<T>
 where
     T: Deserializable,
 {
-    fn deserialize(target: &mut BytesMut) -> Result<Vec<T>> {
-        let len = CompactInt::deserialize(target)?.value() as usize;
+    fn deserialize<B: Buf>(mut target: B) -> Result<Vec<T>> {
+        let len = CompactInt::deserialize(&mut target)?.value() as usize;
         let mut result: Vec<T> = Vec::with_capacity(len);
         for _ in 0..len {
-            result.push(T::deserialize(target)?);
+            result.push(T::deserialize(&mut target)?);
         }
         Ok(result)
     }
 }
 
+// TODO: Improve efficieny?
 impl Deserializable for String {
-    fn deserialize(target: &mut BytesMut) -> Result<String> {
-        let len = CompactInt::deserialize(target)?.value() as usize;
+    fn deserialize<B: Buf>(mut target: B) -> Result<String> {
+        let len = CompactInt::deserialize(&mut target)?.value() as usize;
+        if target.remaining() < len {
+            return Err(out_of_data(&format!("String with len {}", len)));
+        }
         let mut vec = Vec::with_capacity(len);
         vec.resize(len, 0);
         target.copy_to_slice(&mut vec);
@@ -126,10 +155,10 @@ impl Deserializable for String {
 
 // TODO: test
 impl Deserializable for SocketAddr {
-    fn deserialize(target: &mut BytesMut) -> Result<SocketAddr> {
+    fn deserialize<B: Buf>(mut target: B) -> Result<SocketAddr> {
         Ok(SocketAddr::from((
-            <[u8; 16]>::deserialize(target)?,
-            target.get_u16(),
+            <[u8; 16]>::deserialize(&mut target)?,
+            u16::deserialize(&mut target)?,
         )))
     }
 }
@@ -138,7 +167,10 @@ impl Deserializable for SocketAddr {
 macro_rules! impl_deserializable_byte_array {
     ($size:expr) => {
         impl Deserializable for [u8; $size] {
-            fn deserialize(target: &mut BytesMut) -> Result<[u8; $size]> {
+            fn deserialize<B: Buf>(mut target: B) -> Result<[u8; $size]> {
+                if target.remaining() < $size {
+                    return Err(out_of_data(&format!("[u8; {}]", $size)));
+                }
                 let mut result = [0u8; $size];
                 target.copy_to_slice(&mut result);
                 Ok(result)

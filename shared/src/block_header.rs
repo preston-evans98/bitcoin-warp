@@ -1,9 +1,8 @@
 use core::panic;
-use std::borrow::BorrowMut;
 
-use crate::{self as shared, Cached, Deserializable, Serializable};
+use crate::{self as shared, Cached, Serializable};
 use crate::{u256, DeserializationError};
-use bytes::BytesMut;
+use bytes::Buf;
 use serde_derive::Serializable;
 use warp_crypto::sha256d;
 #[derive(Serializable, Debug)]
@@ -19,24 +18,24 @@ pub struct BlockHeader {
 }
 
 impl shared::Deserializable for BlockHeader {
-    fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {
-        let slice = match src.get(0..80) {
-            Some(s) => s,
-            None => {
-                return Err(DeserializationError::Parse(String::from(
-                    "Not enough bytes in block header",
-                )))
-            }
-        };
-        let hash_bytes = sha256d(slice);
+    fn deserialize<B: Buf>(mut src: B) -> Result<Self, DeserializationError> {
+        if src.remaining() < 80 {
+            return Err(DeserializationError::Parse(String::from(
+                "Not enough bytes in block header",
+            )));
+        }
+        // Note: this op is zero-copy if the underlying is a Bytes or BytesMut object
+        let mut src = src.copy_to_bytes(80);
+
+        let hash_bytes = sha256d(&src[..]);
         let own_hash = u256::from_bytes(hash_bytes);
         Ok(BlockHeader {
-            version: u32::deserialize(src)?,
-            prev_hash: u256::deserialize(src)?,
-            merkle_root: u256::deserialize(src)?,
-            time: u32::deserialize(src)?,
-            target: Nbits::deserialize(src)?,
-            nonce: u32::deserialize(src)?,
+            version: u32::deserialize(&mut src)?,
+            prev_hash: u256::deserialize(&mut src)?,
+            merkle_root: u256::deserialize(&mut src)?,
+            time: u32::deserialize(&mut src)?,
+            target: Nbits::deserialize(&mut src)?,
+            nonce: u32::deserialize(&mut src)?,
             own_hash: Cached::from(own_hash),
             reported_height: Cached::new(),
         })
@@ -73,9 +72,9 @@ impl BlockHeader {
             reported_height: Cached::new(),
         }
     }
-    pub fn deserialize_owned(mut src: BytesMut) -> Result<Self, DeserializationError> {
-        Self::deserialize(src.borrow_mut())
-    }
+    // pub fn deserialize_owned(mut src: BytesMut) -> Result<Self, DeserializationError> {
+    //     Self::deserialize(src.borrow_mut())
+    // }
 
     pub fn hash(&self) -> &u256 {
         if self.own_hash.has_value() {
@@ -106,8 +105,7 @@ impl Nbits {
     }
 }
 impl crate::Deserializable for Nbits {
-    fn deserialize(target: &mut BytesMut) -> Result<Nbits, crate::DeserializationError>
-where {
+    fn deserialize<B: Buf>(target: B) -> Result<Nbits, crate::DeserializationError> {
         let compressed_target = u32::deserialize(target)?;
         let mantissa: u32 = compressed_target & 0x00FFFFFF;
         // To replicate a bug in core: If the mantissa starts with 0b1, return 0.
@@ -265,7 +263,7 @@ mod tests {
     use crate::Deserializable;
     use crate::{u256, Nbits};
     use byteorder::{LittleEndian, ReadBytesExt};
-    use bytes::BytesMut;
+    use bytes::{Buf, BytesMut};
     use std::iter::FromIterator;
     #[test]
     fn deser_nbits_zero() {
@@ -364,6 +362,7 @@ mod tests {
         let mut input = Vec::with_capacity(4);
         encoded.serialize(&mut input).unwrap();
         let mut cursor = BytesMut::from_iter(input.iter());
+        assert!(cursor.remaining() == 4);
         let nbits = Nbits::deserialize(&mut cursor).unwrap();
         // assert_eq!(format!("{:?}", nbits.target), "");
         assert_eq!(nbits.target.to_hex(), "92340000")

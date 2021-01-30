@@ -1,5 +1,5 @@
 use crate::command::Command;
-use bytes::BytesMut;
+use bytes::Buf;
 use serde_derive::Deserializable;
 use shared::{Deserializable, DeserializationError};
 
@@ -17,17 +17,17 @@ pub struct MessageHeader {
 }
 
 impl MessageHeader {
-    pub fn deserialize(
-        target: &mut BytesMut,
+    pub fn deserialize<B: Buf>(
+        mut target: B,
         expected_magic: u32,
     ) -> Result<MessageHeader, DeserializationError> {
-        let magic = u32::deserialize(target)?;
+        let magic = u32::deserialize(&mut target)?;
         if magic != expected_magic {
             return Err(DeserializationError::parse(&magic.to_le_bytes(), "magic"));
         }
-        let command = Command::deserialize(target)?;
-        let payload_size = u32::deserialize(target)?;
-        let checksum = <[u8; 4]>::deserialize(target)?;
+        let command = Command::deserialize(&mut target)?;
+        let payload_size = u32::deserialize(&mut target)?;
+        let checksum = <[u8; 4]>::deserialize(&mut target)?;
         Ok(MessageHeader {
             magic,
             command,
