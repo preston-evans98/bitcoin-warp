@@ -24,6 +24,7 @@ pub enum PeerError {
     Malicious(String),
     Unexpected(String),
     ConnectionClosed,
+    MessageRejected(String),
 }
 impl From<DeserializationError> for PeerError {
     fn from(kind: DeserializationError) -> PeerError {
@@ -51,6 +52,7 @@ impl fmt::Display for PeerError {
             PeerError::Malicious(cause) => cause.fmt(f),
             PeerError::ConnectionClosed => Ok(()),
             PeerError::Unexpected(cause) => cause.fmt(f),
+            PeerError::MessageRejected(cause)=> cause.fmt(f),
         }
     }
 }

@@ -62,21 +62,44 @@ impl<NodeDataStore> Server<NodeDataStore> {
         match self.state {
             ServerState::ConnectionClosed => Err(PeerError::ConnectionClosed),
             ServerState::Ready => {
-                todo!()
+                self.handle_ready(msg).await
             }
-            ServerState::AwaitingBlocks(_, _) => self.handle_inbound_blocks(msg).await,
+            ServerState::AwaitingBlocks(_, _) => {
+                self.handle_inbound_blocks(msg).await
+            }
             ServerState::AwaitingTransactions(_) => {
                 todo!()
             }
             ServerState::AwaitingPeers(_) => {
-                todo!()
+                //If we want to return the error or result back up we need to recieve it from the handle_inbound function call
+                let result = self.handle_inbound_peers(msg).await;
+                Ok(())
             }
             ServerState::AwaitingHeaders(_) => {
-                todo!()
+                let result = self.handle_inbound_headers(msg).await;
+                Ok(())
             }
         }
     }
-
+    ///This function handles inbound unsolicited messages
+    async fn handle_ready(&mut self, response: Message) -> Result<(), PeerError> {
+        match response {
+            Message::FilterLoad { filter,n_hash_funcs,n_flags,n_tweak } => {
+                self.load_filter(filter,n_hash_funcs,n_flags,n_tweak);
+                Ok(())
+            }
+            Message::FilterAdd { elements} => {
+                self.add_filter(elements);
+                Ok(())
+            }
+            Message::FilterClear { } => {
+                self.clear_filter();
+                Ok(())
+            }
+            _ => unimplemented!(),
+        }
+    }
+    ///This function handles inbound blocks when the Warp node has requested and is awaiting blocks
     async fn handle_inbound_blocks(&mut self, response: Message) -> Result<(), PeerError> {
         if let ServerState::AwaitingBlocks(ref mut requested_blocks, ref mut accumulated_blocks) =
             self.state
@@ -105,19 +128,54 @@ impl<NodeDataStore> Server<NodeDataStore> {
     }
 
     async fn handle_inbound_peers(&mut self, response: Message) -> Result<(), Message> {
-        match response {
-            Message::Addr { addrs } => {
-                match self.peer_tx.send(NetworkResponse::Peers(addrs)).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        panic!("Server should not outlive peer_tx! {}", e)
+        //TODO might need an if to check the serverstate as the other ones do.
+        if let ServerState::AwaitingPeers(ref mut accumulated_headers) =
+            self.state
+        {
+            match response {
+                Message::Addr { addrs } => {
+                    match self.peer_tx.send(NetworkResponse::Peers(addrs)).await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            panic!("Server should not outlive peer_tx! {}", e)
+                        }
                     }
                 }
-            }
 
-            _ => return Err(response),
-        };
-        Ok(())
+                _ => return Err(response),
+            };
+            Ok(())
+        }
+        else {
+            unreachable!("Must only call handle_inbound_peers while in AwaitingPeers state");
+        }
+    }
+    ///This function handles messages when the Warp node has requested and is awaiting headers from the peer.
+    ///Header messages are accepted as valid and any other message is discarded
+    async fn handle_inbound_headers(&mut self, response: Message) -> Result<(), PeerError> {
+        if let ServerState::AwaitingHeaders(ref mut accumulated_headers) =
+            self.state
+        {
+            match response {
+                Message::Headers { headers } => {
+                    //assuming headers are the ones we want, may want to come back and check them here first before passing them back to peer. TODO
+                    self.state = ServerState::Ready;
+                    match self.peer_tx.send(NetworkResponse::Headers(headers)).await{
+                        Ok(_) => {Ok(())}
+                        Err(e) => {
+                            panic!("Server should not outlive peer_tx! {}", e)               
+                        }
+                    }
+                }
+                Message::Reject {message, code, reason ,extra_data }=>{
+                    //need to log the reject message and then return the error back up
+                    Err(PeerError::MessageRejected(reason))
+                }
+                _ => unimplemented!(),
+            }
+        } else {
+            unreachable!("Must only call handle_inbound_blocks while in AwaitingBlocks state");
+        }
     }
     // async fn handle_msg_as_response(
     //     &mut self,
@@ -197,6 +255,16 @@ impl<NodeDataStore> Server<NodeDataStore> {
     // }
 
     async fn handle_request(&mut self, request: NetworkRequest) {}
+    async fn load_filter(&mut self,filter:Vec<u8>,n_hash_funcs:u32,n_flags:u8,n_tweak:u32){
+
+    }
+    async fn add_filter(&mut self,elements:Vec<Vec<u8>>){
+
+    }
+    async fn clear_filter(&mut self){
+
+    }
+
 }
 
 // pub enum
