@@ -19,9 +19,7 @@ pub fn impl_deser_macro(ast: &syn::DeriveInput) -> TokenStream {
 
             let expanded: quote::__private::TokenStream = quote! {
                 impl shared::Deserializable for #name {
-                    fn deserialize<R>(&self, target: &mut R) -> Result<#name, std::io::Error>
-                    where
-                        R: std::io::Read,
+                    fn deserialize(&self, target: &mut BytesMut) -> Result<#name, std::io::Error>
                     {
                         match *self {
                             #(#variants)*
@@ -37,9 +35,7 @@ pub fn impl_deser_macro(ast: &syn::DeriveInput) -> TokenStream {
 
     let expanded = quote! {
         impl shared::Deserializable for #name {
-            fn deserialize<R>(target: &mut R) -> Result<Self, shared::DeserializationError>
-            where
-                R: std::io::Read,
+            fn deserialize<B: Buf>(mut target: B) -> Result<Self, shared::DeserializationError>
             {
                 Ok(#name {
                     #(#statements)*
@@ -53,7 +49,7 @@ pub fn impl_deser_macro(ast: &syn::DeriveInput) -> TokenStream {
 fn deserialize_field(field: &syn::Field) -> quote::__private::TokenStream {
     let name = field.ident.clone().expect("Missing identifier for field");
     let ty = field.ty.clone();
-    quote! { #name: <#ty as shared::Deserializable>::deserialize(target)?, }
+    quote! { #name: <#ty as shared::Deserializable>::deserialize(&mut target)?, }
     // quote! { #name: 0, }
     // quote! { #name: format!("shared::<{}>::deserialize(target),", #ty)  }
 }

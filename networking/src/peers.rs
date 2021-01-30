@@ -1,7 +1,5 @@
 use crate::interface::{NetworkRequest, NetworkResponse};
-use crate::Peer;
-use shared::Serializable;
-use std::{collections::HashMap, future::Future, net::SocketAddr, pin::Pin};
+use std::{future::Future, net::SocketAddr, pin::Pin};
 use tower::{discover::Discover, load::Load, ready_cache::ReadyCache, Service};
 
 pub enum NetworkError {

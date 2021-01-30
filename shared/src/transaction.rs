@@ -1,11 +1,37 @@
-use crate as shared;
+use crate::serializable::Serializable;
+use crate::{self as shared, Cached, Deserializable, DeserializationError};
 use crate::{u256, CompactInt};
+use bytes::Buf;
 use serde_derive::{Deserializable, Serializable};
-#[derive(Deserializable, Serializable, Debug)]
+use warp_crypto::sha256d;
+
+#[derive(Serializable, Debug)]
 pub struct Transaction {
     version: i32,
     inputs: Vec<TxInput>,
     outputs: Vec<TxOutput>,
+    hash: Cached<u256>,
+}
+
+/// Deserializes a transaction. Expects to be handed a buffer with at most
+impl Deserializable for Transaction {
+    fn deserialize<B: Buf>(mut src: B) -> Result<Self, DeserializationError> {
+        let mut tx = Transaction {
+            version: i32::deserialize(&mut src)?,
+            inputs: <Vec<TxInput>>::deserialize(&mut src)?,
+            outputs: <Vec<TxOutput>>::deserialize(&mut src)?,
+            hash: Cached::new(),
+        };
+        // Calculate tx hash
+        // FIXME: Find a way to avoid this copy
+        let mut out = Vec::with_capacity(tx.len());
+        tx.serialize(&mut out)
+            .expect("Serialization to vec should not fail!");
+        let hash_bytes = sha256d(&out[..]);
+        let own_hash = u256::from_bytes(hash_bytes);
+        tx.hash = Cached::from(own_hash);
+        Ok(tx)
+    }
 }
 impl Transaction {
     pub fn len(&self) -> usize {
@@ -25,12 +51,37 @@ impl Transaction {
             version,
             inputs,
             outputs,
+            hash: Cached::new(),
         }
     }
-    fn is_coinbase(&self) -> bool {
+    pub fn is_coinbase(&self) -> bool {
         self.inputs.len() == 1 && self.inputs[0].is_coinbase_in()
     }
+    pub fn hash(&self) -> Option<&u256> {
+        self.hash.ref_value()
+    }
+
+    // pub fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {
+    //     // let src = Bytes::from(*src);
+    //     let len = std::cmp::min(MAX_TX_LENGTH, src.remaining());
+    //     // Note: this op is zero-copy if the underlying is a Bytes or BytesMut object
+    //     let mut src = src.copy_to_bytes(len);
+    //     let backup = src.clone();
+    //     let mut tx = Transaction {
+    //         version: i32::deserialize(&mut src)?,
+    //         inputs: <Vec<TxInput>>::deserialize(&mut src)?,
+    //         outputs: <Vec<TxOutput>>::deserialize(&mut src)?,
+    //         hash: Cached::new(),
+    //     };
+    //     // FIXME: Make sure the offset is correct!
+
+    //     let hash_bytes = sha256d(&backup[..tx.len()]);
+    //     let own_hash = u256::from_bytes(hash_bytes);
+    //     tx.hash = Cached::from(own_hash);
+    //     Ok(tx)
+    // }
 }
+
 #[derive(Deserializable, Serializable, Debug)]
 pub struct TxInput {
     previous_outpoint: TxOutpoint,
@@ -82,5 +133,5 @@ impl TxOutpoint {
     }
 }
 
-#[derive(Deserializable, Serializable)]
-pub struct CoinbaseInput {}
+// #[derive(Deserializable, Serializable)]
+// pub struct CoinbaseInput {}

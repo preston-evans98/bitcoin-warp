@@ -1,7 +1,8 @@
 use crate::block_header::BlockHeader;
 use crate::transaction::Transaction;
-use crate::{self as shared, Deserializable, DeserializationError};
+use crate::{self as shared, Deserializable, DeserializationError, MerkleTree};
 use crate::{CompactInt, Serializable};
+use bytes::BytesMut;
 use serde_derive::Serializable;
 #[derive(Serializable, Debug)]
 pub struct Block {
@@ -16,6 +17,12 @@ impl Block {
             transactions: txs,
         };
         message
+    }
+    pub fn header(&self) -> &BlockHeader {
+        &self.block_header
+    }
+    pub fn transactions(&self) -> &Vec<Transaction> {
+        &self.transactions
     }
     fn serialized_size(&self) -> usize {
         let mut size = CompactInt::size(self.transactions.len());
@@ -34,27 +41,53 @@ impl Block {
     /// 1. The block contains exactly one Coinbase transaction, and it's in the first position.
     /// 1. The block does not contain duplicate transactions
     /// 1. The transactions merkle-ize to the root in the block header
-    fn deserialize<R>(src: &mut R) -> Result<Self, DeserializationError>
-    where
-        R: std::io::Read,
-    {
-        let header = BlockHeader::deserialize(src)?;
-        let tx_count = CompactInt::deserialize(src)?;
+    pub fn deserialize(mut src: &mut BytesMut) -> Result<Self, DeserializationError> {
+        let header = BlockHeader::deserialize(src.split_to(80))?;
+        let tx_count = {
+            let tx_count = CompactInt::deserialize(&mut src)?;
+            tx_count.value()
+        };
 
         // Reject empty blocks
-        if tx_count.value() == 0 {
+        if tx_count == 0 {
             return Err(DeserializationError::Parse(String::from(
                 "Block contains no transactions",
             )));
         }
-        
-        let first_tx = Transaction::deserialize(src)?;
-        // if !first_tx.
-        // if header.version >= 2 {
-        //     header.reported_height = 
-        // }
-        // FIXME: finish implementing
 
+        // Deserialize and structurally validate Coinbase
+        let first_tx = Transaction::deserialize(&mut src)?;
+        if !first_tx.is_coinbase() {
+            return Err(DeserializationError::Parse(String::from(
+                "Block did not contain Coinbase in first position",
+            )));
+        }
+        // TODO: Parse block height
+        if header.version() >= 2 {}
+
+        let mut transactions = Vec::with_capacity(tx_count as usize);
+        let mut actual_merkle_root = MerkleTree::new();
+        transactions.push(first_tx);
+
+        // Parse and validate remaining transactions
+        for _ in 1..tx_count {
+            let next = Transaction::deserialize(&mut src)?;
+            if next.is_coinbase() {
+                return Err(DeserializationError::Parse(String::from(
+                    "Block contained second Coinbase",
+                )));
+            }
+            actual_merkle_root.update(
+                next.hash()
+                    .expect("Deserialized transactions should always have their hash set"),
+            );
+            transactions.push(next);
+        }
+        if !actual_merkle_root.matches(header.merkle_root()) {
+            return Err(DeserializationError::Parse(String::from(
+                "Invalid Merkle Root",
+            )));
+        }
         todo!()
     }
 }

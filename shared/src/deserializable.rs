@@ -1,6 +1,5 @@
 use crate::CompactInt;
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
-use paste::paste;
+use bytes::Buf;
 use std::error::Error;
 use std::net::SocketAddr;
 use std::{fmt, io};
@@ -39,18 +38,21 @@ impl From<io::Error> for DeserializationError {
 type Result<R> = std::result::Result<R, DeserializationError>;
 
 pub trait Deserializable {
-    fn deserialize<R>(reader: &mut R) -> Result<Self>
+    fn deserialize<B: Buf>(target: B) -> Result<Self>
     where
-        Self: Sized,
-        R: std::io::Read;
+        Self: Sized;
+}
+
+fn out_of_data(ty: &str) -> DeserializationError {
+    DeserializationError::Parse(format!("Not enough data to in buffer to read {}", ty))
 }
 
 impl Deserializable for bool {
-    fn deserialize<R>(target: &mut R) -> Result<bool>
-    where
-        R: std::io::Read,
-    {
-        let value = target.read_u8()?;
+    fn deserialize<B: Buf>(mut target: B) -> Result<bool> {
+        if !target.has_remaining() {
+            return Err(out_of_data("u8"));
+        }
+        let value = target.get_u8();
         match value {
             0 => Ok(false),
             1 => Ok(true),
@@ -62,56 +64,83 @@ impl Deserializable for bool {
     }
 }
 impl Deserializable for u8 {
-    fn deserialize<R>(target: &mut R) -> Result<u8>
-    where
-        R: std::io::Read,
-    {
-        Ok(target.read_u8()?)
+    fn deserialize<B: Buf>(mut target: B) -> Result<u8> {
+        if !target.has_remaining() {
+            return Err(out_of_data("u8"));
+        }
+        Ok(target.get_u8())
     }
 }
 
-macro_rules! impl_deser_primitive {
-    ($($t:ty),+) => {
-        $(impl Deserializable for $t {
-            fn deserialize<R>(target: &mut R) -> Result<$t>
-            where
-                R: std::io::Read,
-            {
-                paste! {Ok(target.[<read_ $t>]::<LittleEndian>()?)}
-            }
-        })+
-    };
+impl Deserializable for u16 {
+    fn deserialize<B: Buf>(mut target: B) -> Result<u16> {
+        if target.remaining() < 2 {
+            return Err(out_of_data("u16"));
+        }
+        Ok(target.get_u16_le())
+    }
 }
 
-impl_deser_primitive!(u16, u32, u64, i32, i64);
+impl Deserializable for u32 {
+    fn deserialize<B: Buf>(mut target: B) -> Result<u32> {
+        if target.remaining() < 4 {
+            return Err(out_of_data("u32"));
+        }
+        Ok(target.get_u32_le())
+    }
+}
+
+impl Deserializable for u64 {
+    fn deserialize<B: Buf>(mut target: B) -> Result<u64> {
+        if target.remaining() < 8 {
+            return Err(out_of_data("u64"));
+        }
+        Ok(target.get_u64_le())
+    }
+}
+
+impl Deserializable for i32 {
+    fn deserialize<B: Buf>(mut target: B) -> Result<i32> {
+        if target.remaining() < 4 {
+            return Err(out_of_data("i32"));
+        }
+        Ok(target.get_i32_le())
+    }
+}
+
+impl Deserializable for i64 {
+    fn deserialize<B: Buf>(mut target: B) -> Result<i64> {
+        if target.remaining() < 8 {
+            return Err(out_of_data("i64"));
+        }
+        Ok(target.get_i64_le())
+    }
+}
 
 impl<T> Deserializable for Vec<T>
 where
     T: Deserializable,
 {
-    fn deserialize<R>(target: &mut R) -> Result<Vec<T>>
-    where
-        R: std::io::Read,
-        T: Deserializable,
-    {
-        let len = CompactInt::deserialize(target)?.value() as usize;
+    fn deserialize<B: Buf>(mut target: B) -> Result<Vec<T>> {
+        let len = CompactInt::deserialize(&mut target)?.value() as usize;
         let mut result: Vec<T> = Vec::with_capacity(len);
         for _ in 0..len {
-            result.push(T::deserialize(target)?);
+            result.push(T::deserialize(&mut target)?);
         }
         Ok(result)
     }
 }
 
+// TODO: Improve efficieny?
 impl Deserializable for String {
-    fn deserialize<R>(target: &mut R) -> Result<String>
-    where
-        R: std::io::Read,
-    {
-        let len = CompactInt::deserialize(target)?.value() as usize;
+    fn deserialize<B: Buf>(mut target: B) -> Result<String> {
+        let len = CompactInt::deserialize(&mut target)?.value() as usize;
+        if target.remaining() < len {
+            return Err(out_of_data(&format!("String with len {}", len)));
+        }
         let mut vec = Vec::with_capacity(len);
         vec.resize(len, 0);
-        target.read_exact(&mut vec)?;
+        target.copy_to_slice(&mut vec);
         if let Ok(string) = String::from_utf8(vec) {
             return Ok(string);
         }
@@ -126,13 +155,10 @@ impl Deserializable for String {
 
 // TODO: test
 impl Deserializable for SocketAddr {
-    fn deserialize<R>(target: &mut R) -> Result<SocketAddr>
-    where
-        R: std::io::Read,
-    {
+    fn deserialize<B: Buf>(mut target: B) -> Result<SocketAddr> {
         Ok(SocketAddr::from((
-            <[u8; 16]>::deserialize(target)?,
-            target.read_u16::<BigEndian>()?,
+            <[u8; 16]>::deserialize(&mut target)?,
+            u16::deserialize(&mut target)?,
         )))
     }
 }
@@ -141,12 +167,12 @@ impl Deserializable for SocketAddr {
 macro_rules! impl_deserializable_byte_array {
     ($size:expr) => {
         impl Deserializable for [u8; $size] {
-            fn deserialize<R>(target: &mut R) -> Result<[u8; $size]>
-            where
-                R: std::io::Read,
-            {
+            fn deserialize<B: Buf>(mut target: B) -> Result<[u8; $size]> {
+                if target.remaining() < $size {
+                    return Err(out_of_data(&format!("[u8; {}]", $size)));
+                }
                 let mut result = [0u8; $size];
-                target.read_exact(&mut result)?;
+                target.copy_to_slice(&mut result);
                 Ok(result)
             }
         }

@@ -1,10 +1,22 @@
-use serde_derive::{Deserializable, Serializable};
-use shared::{CompactInt, Transaction};
+use bytes::{Buf, BytesMut};
+use serde_derive::Serializable;
+use shared::{CompactInt, Deserializable, DeserializationError, Transaction};
 
-#[derive(Serializable, Deserializable, Debug)]
+#[derive(Serializable, Debug)]
 pub struct PrefilledTransaction {
     index: CompactInt,
     tx: Transaction,
+}
+
+impl Deserializable for PrefilledTransaction {
+    fn deserialize<B: Buf>(mut reader: B) -> Result<Self, DeserializationError>
+    where
+        Self: Sized,
+    {
+        let index = CompactInt::deserialize(&mut reader)?;
+        let tx = Transaction::deserialize(&mut reader)?;
+        Ok(PrefilledTransaction { index, tx })
+    }
 }
 
 impl PrefilledTransaction {

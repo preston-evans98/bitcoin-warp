@@ -28,8 +28,7 @@ pub enum Message {
         txs: Vec<Transaction>,
     },
     Block {
-        block_header: BlockHeader,
-        transactions: Vec<Transaction>,
+        block: shared::Block,
     },
     CompactBlock {
         header: BlockHeader,
