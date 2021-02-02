@@ -1,9 +1,12 @@
 use crate::block_header::BlockHeader;
+pub use crate::hashes::BlockHash as Hash;
 use crate::transaction::Transaction;
-use crate::{self as shared, Deserializable, DeserializationError, MerkleTree};
+use crate::TxID;
+use crate::{self as shared, Deserializable, DeserializationError, MerkleRoot};
 use crate::{CompactInt, Serializable};
 use bytes::BytesMut;
 use serde_derive::Serializable;
+
 #[derive(Serializable, Debug)]
 pub struct Block {
     block_header: BlockHeader,
@@ -23,6 +26,12 @@ impl Block {
     }
     pub fn transactions(&self) -> &Vec<Transaction> {
         &self.transactions
+    }
+    pub fn txids(&self) -> Vec<&TxID> {
+        self.transactions
+            .iter()
+            .map(|tx| tx.txid())
+            .collect::<Vec<&TxID>>()
     }
     fn serialized_size(&self) -> usize {
         let mut size = CompactInt::size(self.transactions.len());
@@ -77,11 +86,8 @@ impl Block {
             }
             transactions.push(next);
         }
-        let actual_merkle_root = MerkleTree::from_iter(transactions.iter().map(|tx| {
-            tx.txid()
-                .expect("Deserialized transactions must have prepulated hash")
-        }));
-        if !actual_merkle_root.matches(header.merkle_root()) {
+        let actual_merkle_root = MerkleRoot::from_iter(transactions.iter().map(|tx| tx.txid()));
+        if !(&actual_merkle_root == header.merkle_root()) {
             return Err(DeserializationError::Parse(String::from(
                 "Invalid Merkle Root",
             )));
@@ -111,8 +117,8 @@ fn serial_size() {
     txs.push(tx2);
     let block_header = BlockHeader::new(
         23,
-        crate::u256::from(12345678),
-        crate::u256::from(9876543),
+        shared::block::Hash::from_u64(12345678),
+        MerkleRoot::from_u64(9876543),
         2342,
         crate::block_header::Nbits::new(crate::u256::from(8719)),
         99,

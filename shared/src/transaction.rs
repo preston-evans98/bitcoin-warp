@@ -1,3 +1,4 @@
+pub use crate::hashes::TxID;
 use crate::serializable::Serializable;
 use crate::{self as shared, Cached, Deserializable, DeserializationError};
 use crate::{u256, CompactInt};
@@ -11,7 +12,7 @@ pub struct Transaction {
     inputs: Vec<TxInput>,
     outputs: Vec<TxOutput>,
     locktime: u32,
-    hash: Cached<u256>,
+    hash: Cached<TxID>,
 }
 
 /// Deserializes a transaction. Expects to be handed a buffer with at most
@@ -51,7 +52,7 @@ impl Deserializable for Transaction {
         tx.serialize(&mut out)
             .expect("Serialization to vec should not fail!");
         let hash_bytes = sha256d(&out[..]);
-        let own_hash = u256::from_bytes(hash_bytes);
+        let own_hash = TxID::from(hash_bytes);
         tx.hash = Cached::from(own_hash);
         Ok(tx)
     }
@@ -82,11 +83,11 @@ impl Transaction {
     pub fn is_coinbase(&self) -> bool {
         self.inputs.len() == 1 && self.inputs[0].is_coinbase_in()
     }
-    pub fn hash(&self) -> Option<&u256> {
-        self.hash.ref_value()
-    }
-    pub fn txid(&self) -> Option<&u256> {
-        self.hash.ref_value()
+
+    pub fn txid(&self) -> &TxID {
+        self.hash
+            .ref_value()
+            .expect("Must fill txid at construction")
     }
 
     // pub fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {

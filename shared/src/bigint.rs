@@ -1,6 +1,6 @@
 use crate::deserializable::{Deserializable, DeserializationError};
 use crate::serializable::Serializable;
-use byteorder::{BigEndian, ByteOrder, LittleEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{LittleEndian, WriteBytesExt};
 use bytes::Buf;
 use std::convert::TryInto;
 
@@ -139,7 +139,7 @@ impl Serializable for &u256 {
 }
 
 impl Deserializable for u256 {
-    fn deserialize<B: Buf>(mut target: B) -> Result<u256, DeserializationError> {
+    fn deserialize<B: Buf>(target: B) -> Result<u256, DeserializationError> {
         // if target.remaining() < (256 / 8) {
         //     return Err(DeserializationError::Parse(String::from(
         //         "Not enough data left in buffer to parse u256",
@@ -173,8 +173,7 @@ fn test_u256_ser_deser() {
     contents[15] = 2;
     contents[23] = 3;
     contents[31] = 4;
-    let mut expected = u256(contents);
-    // expe
+    let expected = u256(contents);
     let mut serial: Vec<u8> = Vec::with_capacity(32);
     expected.serialize(&mut serial).unwrap();
     let mut de_target = BytesMut::from_iter(serial.iter());

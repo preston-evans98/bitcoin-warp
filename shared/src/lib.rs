@@ -17,7 +17,7 @@ mod inventory_data;
 pub use inventory_data::{InventoryData, InventoryType};
 
 mod block;
-pub use block::Block;
+pub use block::{Block, Hash as BlockHash};
 
 // mod payload;
 // pub use payload::Payload;
@@ -26,10 +26,12 @@ mod block_header;
 pub use block_header::{BlockHeader, Nbits};
 
 mod transaction;
-pub use transaction::{Transaction, TxInput, TxOutpoint, TxOutput};
+pub use transaction::{Transaction, TxID, TxInput, TxOutpoint, TxOutput};
 
 mod cached;
 use cached::Cached;
 
 mod merkle_tree;
-use merkle_tree::MerkleTree;
+pub use merkle_tree::MerkleRoot;
+
+mod hashes;

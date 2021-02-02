@@ -1,6 +1,6 @@
 use crate::{BitcoinCodec, Message, NetworkRequest, NetworkResponse, PeerError};
 use futures::{SinkExt, StreamExt};
-use shared::{u256, Block, BlockHeader, EncapsulatedAddr, Transaction};
+use shared::{u256, Block, BlockHash, BlockHeader, EncapsulatedAddr, Transaction};
 use std::{
     collections::HashSet, future::Future, pin::Pin, result::Result, task::Poll, unreachable,
 };
@@ -24,7 +24,7 @@ enum ServerError {
 
 enum ServerState {
     Ready,
-    AwaitingBlocks(HashSet<u256>, Vec<Block>),
+    AwaitingBlocks(HashSet<BlockHash>, Vec<Block>),
     AwaitingTransactions(Vec<Transaction>),
     AwaitingPeers(Vec<EncapsulatedAddr>),
     AwaitingHeaders(Vec<BlockHeader>),
@@ -60,36 +60,33 @@ impl<NodeDataStore> Server<NodeDataStore> {
     async fn handle_msg(&mut self, msg: Message) -> Result<(), PeerError> {
         match self.state {
             ServerState::ConnectionClosed => Err(PeerError::ConnectionClosed),
-            ServerState::Ready => {
-                self.handle_ready(msg).await
-            }
-            ServerState::AwaitingBlocks(_, _) => {
-                self.handle_inbound_blocks(msg).await
-            }
-            ServerState::AwaitingTransactions(_) => {
-                self.handle_inbound_transactions(msg).await
-            }
+            ServerState::Ready => self.handle_ready(msg).await,
+            ServerState::AwaitingBlocks(_, _) => self.handle_inbound_blocks(msg).await,
+            ServerState::AwaitingTransactions(_) => self.handle_inbound_transactions(msg).await,
             ServerState::AwaitingPeers(_) => {
                 //If we want to return the error or result back up we need to recieve it from the handle_inbound function call
                 self.handle_inbound_peers(msg).await
             }
-            ServerState::AwaitingHeaders(_) => {
-                self.handle_inbound_headers(msg).await
-            }
+            ServerState::AwaitingHeaders(_) => self.handle_inbound_headers(msg).await,
         }
     }
     ///This function handles inbound unsolicited messages
     async fn handle_ready(&mut self, response: Message) -> Result<(), PeerError> {
         match response {
-            Message::FilterLoad { filter,n_hash_funcs,n_flags,n_tweak } => {
-                self.load_filter(filter,n_hash_funcs,n_flags,n_tweak);
+            Message::FilterLoad {
+                filter,
+                n_hash_funcs,
+                n_flags,
+                n_tweak,
+            } => {
+                self.load_filter(filter, n_hash_funcs, n_flags, n_tweak);
                 Ok(())
             }
-            Message::FilterAdd { elements} => {
+            Message::FilterAdd { elements } => {
                 self.add_filter(elements);
                 Ok(())
             }
-            Message::FilterClear { } => {
+            Message::FilterClear {} => {
                 self.clear_filter();
                 Ok(())
             }
@@ -102,7 +99,7 @@ impl<NodeDataStore> Server<NodeDataStore> {
     /// 2. Block response from a GetBlocks or GetData request
     /// 1. BlockTxn from a GetData request
     /// 1. MerkleBlock from a GetData request
-    /// 1. CmpctBlock from a GetData request 
+    /// 1. CmpctBlock from a GetData request
     /// 1. NotFound from a GetData request
     /// 1. Tx from a GetData request
 
@@ -135,9 +132,7 @@ impl<NodeDataStore> Server<NodeDataStore> {
 
     async fn handle_inbound_peers(&mut self, response: Message) -> Result<(), PeerError> {
         //TODO might need an if to check the serverstate as the other ones do.
-        if let ServerState::AwaitingPeers(ref mut addrs) =
-            self.state
-        {
+        if let ServerState::AwaitingPeers(ref mut addrs) = self.state {
             match response {
                 Message::Addr { addrs } => {
                     self.clean_up_server_state();
@@ -145,24 +140,26 @@ impl<NodeDataStore> Server<NodeDataStore> {
                 _ => unimplemented!(),
             };
             Ok(())
-        }
-        else {
+        } else {
             unreachable!("Must only call handle_inbound_peers while in AwaitingPeers state");
         }
     }
     ///This function handles messages when the Warp node has requested and is awaiting headers from the peer.
     ///Header messages are accepted as valid and any other message is discarded
     async fn handle_inbound_headers(&mut self, response: Message) -> Result<(), PeerError> {
-        if let ServerState::AwaitingHeaders(ref mut accumulated_headers) =
-            self.state
-        {
+        if let ServerState::AwaitingHeaders(ref mut accumulated_headers) = self.state {
             match response {
                 Message::Headers { headers } => {
                     //assuming headers are the ones we want, may want to come back and check them here first before passing them back to peer. TODO
                     self.clean_up_server_state();
                     Ok(())
                 }
-                Message::Reject {message, code, reason ,extra_data }=>{
+                Message::Reject {
+                    message,
+                    code,
+                    reason,
+                    extra_data,
+                } => {
                     //need to log the reject message and then return the error back up
                     Err(PeerError::MessageRejected(reason))
                 }
@@ -172,12 +169,10 @@ impl<NodeDataStore> Server<NodeDataStore> {
             unreachable!("Must only call handle_inbound_blocks while in AwaitingBlocks state");
         }
     }
-     /// This function handles messages when the Warp node has requested and is awaiting transactions from the peer.
+    /// This function handles messages when the Warp node has requested and is awaiting transactions from the peer.
     /// Transaction messages are accepted as valid and any other message is discarded
     async fn handle_inbound_transactions(&mut self, response: Message) -> Result<(), PeerError> {
-        if let ServerState::AwaitingTransactions(ref mut accumulated_headers) =
-            self.state
-        {
+        if let ServerState::AwaitingTransactions(ref mut accumulated_headers) = self.state {
             match response {
                 _ => unimplemented!(),
             }
@@ -263,21 +258,20 @@ impl<NodeDataStore> Server<NodeDataStore> {
     // }
 
     async fn handle_request(&mut self, request: NetworkRequest) {}
-    async fn load_filter(&mut self,filter:Vec<u8>,n_hash_funcs:u32,n_flags:u8,n_tweak:u32){
-
+    async fn load_filter(&mut self, filter: Vec<u8>, n_hash_funcs: u32, n_flags: u8, n_tweak: u32) {
     }
-    async fn add_filter(&mut self,elements:Vec<Vec<u8>>){
-
-    }
-    async fn clear_filter(&mut self){
-
-    }
-    async fn clean_up_server_state(&mut self){
-        let mut new_state= ServerState::Ready;
+    async fn add_filter(&mut self, elements: Vec<Vec<u8>>) {}
+    async fn clear_filter(&mut self) {}
+    async fn clean_up_server_state(&mut self) {
+        let mut new_state = ServerState::Ready;
         std::mem::swap(&mut new_state, &mut self.state);
-        match new_state{
-            ServerState::AwaitingBlocks(requested_blocks, accumulated_blocks) =>{
-                match self.peer_tx.send(NetworkResponse::Blocks(accumulated_blocks)).await {
+        match new_state {
+            ServerState::AwaitingBlocks(requested_blocks, accumulated_blocks) => {
+                match self
+                    .peer_tx
+                    .send(NetworkResponse::Blocks(accumulated_blocks))
+                    .await
+                {
                     Ok(_) => {}
                     Err(e) => {
                         panic!("Server should not outlive peer_tx! {}", e)
@@ -293,19 +287,18 @@ impl<NodeDataStore> Server<NodeDataStore> {
                 }
             }
             ServerState::AwaitingHeaders(headers) => {
-                match self.peer_tx.send(NetworkResponse::Headers(headers)).await{
+                match self.peer_tx.send(NetworkResponse::Headers(headers)).await {
                     Ok(_) => {}
                     Err(e) => {
-                        panic!("Server should not outlive peer_tx! {}", e)               
+                        panic!("Server should not outlive peer_tx! {}", e)
                     }
                 }
             }
-    
+
             _ => unimplemented!(),
         }
         self.state = ServerState::Ready;
     }
-
 }
 
 // pub enum

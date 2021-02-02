@@ -1,6 +1,7 @@
 use core::panic;
 
 use crate::{self as shared, Cached, Serializable};
+use crate::{block, MerkleRoot};
 use crate::{u256, DeserializationError};
 use bytes::Buf;
 use serde_derive::Serializable;
@@ -8,12 +9,12 @@ use warp_crypto::sha256d;
 #[derive(Serializable, Debug)]
 pub struct BlockHeader {
     version: u32,
-    prev_hash: u256,
-    merkle_root: u256,
+    prev_hash: block::Hash,
+    merkle_root: MerkleRoot,
     time: u32,
     target: Nbits,
     nonce: u32,
-    own_hash: Cached<u256>,
+    own_hash: Cached<block::Hash>,
     reported_height: Cached<usize>,
 }
 
@@ -28,11 +29,11 @@ impl shared::Deserializable for BlockHeader {
         let mut src = src.copy_to_bytes(80);
 
         let hash_bytes = sha256d(&src[..]);
-        let own_hash = u256::from_bytes(hash_bytes);
+        let own_hash = block::Hash::from(hash_bytes);
         Ok(BlockHeader {
             version: u32::deserialize(&mut src)?,
-            prev_hash: u256::deserialize(&mut src)?,
-            merkle_root: u256::deserialize(&mut src)?,
+            prev_hash: block::Hash::deserialize(&mut src)?,
+            merkle_root: MerkleRoot::deserialize(&mut src)?,
             time: u32::deserialize(&mut src)?,
             target: Nbits::deserialize(&mut src)?,
             nonce: u32::deserialize(&mut src)?,
@@ -50,13 +51,13 @@ impl BlockHeader {
     pub fn version(&self) -> u32 {
         self.version
     }
-    pub fn merkle_root(&self) -> &u256 {
+    pub fn merkle_root(&self) -> &MerkleRoot {
         &self.merkle_root
     }
     pub fn new(
         version: u32,
-        prev_hash: u256,
-        merkle_root: u256,
+        prev_hash: block::Hash,
+        merkle_root: MerkleRoot,
         time: u32,
         target: Nbits,
         nonce: u32,
@@ -76,11 +77,24 @@ impl BlockHeader {
     //     Self::deserialize(src.borrow_mut())
     // }
 
-    pub fn hash(&self) -> &u256 {
+    pub fn hash(&self) -> &block::Hash {
         if self.own_hash.has_value() {
             return self.own_hash.ref_value().unwrap();
         }
         panic!("Constructor must set hash!")
+    }
+
+    pub fn prev_hash(&self) -> &block::Hash {
+        &self.prev_hash
+    }
+    pub fn raw_time(&self) -> u32 {
+        self.time
+    }
+    pub fn target(&self) -> &u256 {
+        &self.target.value()
+    }
+    pub fn nonce(&self) -> u32 {
+        self.nonce
     }
 
     pub fn set_hash(&mut self) {
@@ -90,7 +104,7 @@ impl BlockHeader {
             self.serialize(&mut writer)
                 .expect("Serialization to vec shouldn't fail");
             let hash = sha256d(&serial);
-            self.own_hash = Cached::from(u256::from_bytes(hash));
+            self.own_hash = Cached::from(block::Hash::from(hash));
         }
     }
 }
@@ -102,6 +116,9 @@ pub struct Nbits {
 impl Nbits {
     pub fn new(target: u256) -> Nbits {
         Nbits { target }
+    }
+    pub fn value(&self) -> &u256 {
+        &self.target
     }
 }
 impl crate::Deserializable for Nbits {
