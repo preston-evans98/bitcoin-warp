@@ -77,7 +77,7 @@ impl Serializable for Command {
 
 impl Deserializable for Command {
     fn deserialize<B: Buf>(mut reader: B) -> Result<Command, DeserializationError> {
-        if reader.remaining() > 12 {
+        if reader.remaining() < 12 {
             return Err(DeserializationError::Parse(String::from(
                 "Not enough data left in reader to deserialize Command",
             )));

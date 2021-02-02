@@ -24,6 +24,17 @@ pub fn sha256d(input: &[u8]) -> [u8; 32] {
     out
 }
 
+pub fn merkleize(a: &[u8], b: &[u8]) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    let mut out = [0; 32];
+    hasher.input(a);
+    hasher.input(b);
+    hasher.result(&mut out);
+    hasher.reset();
+    hasher.input(&out);
+    hasher.result(&mut out);
+    out
+}
 #[cfg(test)]
 mod tests {
     use crate::{double_sha256, sha256d};

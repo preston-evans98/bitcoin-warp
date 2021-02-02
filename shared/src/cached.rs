@@ -27,8 +27,13 @@ impl<T> Cached<T> {
     }
 }
 
-impl<T> std::fmt::Debug for Cached<T> {
-    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<T> std::fmt::Debug for Cached<T>
+where
+    T: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Ok(())
+        self.0.fmt(f);
         Ok(())
     }
 }

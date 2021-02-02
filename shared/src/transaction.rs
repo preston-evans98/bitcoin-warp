@@ -10,18 +10,41 @@ pub struct Transaction {
     version: i32,
     inputs: Vec<TxInput>,
     outputs: Vec<TxOutput>,
+    locktime: u32,
     hash: Cached<u256>,
 }
 
 /// Deserializes a transaction. Expects to be handed a buffer with at most
 impl Deserializable for Transaction {
     fn deserialize<B: Buf>(mut src: B) -> Result<Self, DeserializationError> {
+        let version = i32::deserialize(&mut src)?;
+        let inputs = <Vec<TxInput>>::deserialize(&mut src)?;
+        // if !(inputs.len() == 1 && inputs[0].is_coinbase_in()) {
+        //     return Err(DeserializationError::Parse(format!(
+        //         "Made it!  Remaining: {}",
+        //         src.remaining()
+        //     )));
+        // }
+        let outputs = <Vec<TxOutput>>::deserialize(&mut src)?;
+        let locktime = u32::deserialize(&mut src)?;
+        // return Err(DeserializationError::Parse(format!(
+        //     "Coinbase out:  {:x?}",
+        //     outputs
+        // )));
+        let hash = Cached::new();
         let mut tx = Transaction {
-            version: i32::deserialize(&mut src)?,
-            inputs: <Vec<TxInput>>::deserialize(&mut src)?,
-            outputs: <Vec<TxOutput>>::deserialize(&mut src)?,
-            hash: Cached::new(),
+            version,
+            inputs,
+            outputs,
+            locktime,
+            hash,
         };
+        // let mut tx = Transaction {
+        //     version: i32::deserialize(&mut src)?,
+        //     inputs: <Vec<TxInput>>::deserialize(&mut src)?,
+        //     outputs: <Vec<TxOutput>>::deserialize(&mut src)?,
+        //     hash: Cached::new(),
+        // };
         // Calculate tx hash
         // FIXME: Find a way to avoid this copy
         let mut out = Vec::with_capacity(tx.len());
@@ -44,13 +67,15 @@ impl Transaction {
         for output in self.outputs.iter() {
             size += output.len();
         }
-        size
+        size + 4
     }
     pub fn new(version: i32, inputs: Vec<TxInput>, outputs: Vec<TxOutput>) -> Transaction {
         Transaction {
             version,
             inputs,
             outputs,
+            // FIXME: Allow setting locktime
+            locktime: 0xffffffff,
             hash: Cached::new(),
         }
     }
@@ -58,6 +83,9 @@ impl Transaction {
         self.inputs.len() == 1 && self.inputs[0].is_coinbase_in()
     }
     pub fn hash(&self) -> Option<&u256> {
+        self.hash.ref_value()
+    }
+    pub fn txid(&self) -> Option<&u256> {
         self.hash.ref_value()
     }
 
@@ -103,7 +131,7 @@ impl TxInput {
         }
     }
     pub fn is_coinbase_in(&self) -> bool {
-        self.previous_outpoint.hash.is_zero() && self.previous_outpoint.index == std::u32::MAX
+        self.previous_outpoint.index == std::u32::MAX && self.previous_outpoint.hash.is_zero()
     }
 }
 #[derive(Deserializable, Serializable, Debug)]

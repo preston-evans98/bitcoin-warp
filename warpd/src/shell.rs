@@ -48,6 +48,7 @@ pub mod shell {
             tokio::select! {
                 val = peer.receive(None) => {
                     if let Err(e) = val {
+                        println!("{:?}", e);
                         println!("  Peer is experiencing issues. Disconnecting...");
                         return Err(e)
                     }

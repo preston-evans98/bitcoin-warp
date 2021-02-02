@@ -46,4 +46,18 @@ impl MessageHeader {
     pub fn len() -> usize {
         24
     }
+
+    pub fn _test_create(
+        magic: u32,
+        command: Command,
+        payload_size: u32,
+        checksum: [u8; 4],
+    ) -> MessageHeader {
+        MessageHeader {
+            magic,
+            command,
+            payload_size,
+            checksum,
+        }
+    }
 }

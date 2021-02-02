@@ -1,4 +1,4 @@
-use bytes::{Buf, BytesMut};
+use bytes::Buf;
 use serde_derive::Serializable;
 use shared::{CompactInt, Deserializable, DeserializationError, Transaction};
 

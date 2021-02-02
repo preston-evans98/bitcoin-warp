@@ -64,9 +64,7 @@ impl Block {
         }
         // TODO: Parse block height
         if header.version() >= 2 {}
-
         let mut transactions = Vec::with_capacity(tx_count as usize);
-        let mut actual_merkle_root = MerkleTree::new();
         transactions.push(first_tx);
 
         // Parse and validate remaining transactions
@@ -77,18 +75,18 @@ impl Block {
                     "Block contained second Coinbase",
                 )));
             }
-            actual_merkle_root.update(
-                next.hash()
-                    .expect("Deserialized transactions should always have their hash set"),
-            );
             transactions.push(next);
         }
+        let actual_merkle_root = MerkleTree::from_iter(transactions.iter().map(|tx| {
+            tx.txid()
+                .expect("Deserialized transactions must have prepulated hash")
+        }));
         if !actual_merkle_root.matches(header.merkle_root()) {
             return Err(DeserializationError::Parse(String::from(
                 "Invalid Merkle Root",
             )));
         }
-        todo!()
+        Ok(Block::new(header, transactions))
     }
 }
 
