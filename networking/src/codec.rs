@@ -312,6 +312,7 @@ mod message_roundtrip_tests {
     use crate::codec::Codec;
     use crate::Message::{self};
     use bytes::BytesMut;
+    use shared::EncapsulatedAddr;
     use std::net::SocketAddr;
     use tokio_util::codec::{Decoder, Encoder};
 
@@ -325,6 +326,32 @@ mod message_roundtrip_tests {
             codec.decode(&mut out).unwrap().unwrap()
         }
     }
+
+    #[test]
+    fn addr_roundtrip() {
+        let a1 = EncapsulatedAddr::new(123, 4312, SocketAddr::from(([192, 168, 0, 1], 3030)));
+        let a2 = EncapsulatedAddr::new(321, 2331, SocketAddr::from(([127, 0, 0, 1], 8333)));
+        let expected = Message::Addr(vec![a1, a2]);
+        let actual = Codec::roundtrip(expected.clone());
+        match actual {
+            Message::Addr(actual_vec) => {
+                if let Message::Addr(expected_vec) = expected {
+                    for (expected_addr, actual_addr) in expected_vec.iter().zip(actual_vec.iter()) {
+                        assert_eq!(expected_addr.time(), actual_addr.time());
+                        assert_eq!(expected_addr.services(), actual_addr.services());
+                        assert_eq!(expected_addr.time(), actual_addr.time())
+                    }
+                } else {
+                    panic!(
+                        "Hardcoded message with wrong type! Expected to expect Addr, got {:?}",
+                        expected
+                    );
+                }
+            }
+            _ => panic!("Wrong message! Expected Verack received {:?}", actual),
+        }
+    }
+
     #[test]
     fn version_roundtrip() {
         let v1 = Message::version(
@@ -368,6 +395,14 @@ mod message_roundtrip_tests {
             } else {
                 panic!("Wrong Message: {:?}", actual)
             }
+        }
+    }
+    #[test]
+    fn verack_roundtrip() {
+        let actual = Codec::roundtrip(Message::Verack);
+        match actual {
+            Message::Verack => {}
+            _ => panic!("Wrong message! Expected Verack received {:?}", actual),
         }
     }
 }

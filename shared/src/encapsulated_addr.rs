@@ -17,6 +17,15 @@ impl EncapsulatedAddr {
             addr,
         }
     }
+    pub fn time(&self) -> u32 {
+        self.time
+    }
+    pub fn services(&self) -> u64 {
+        self.services
+    }
+    pub fn addr(&self) -> &SocketAddr {
+        &self.addr
+    }
 }
 
 impl Serializable for EncapsulatedAddr {
