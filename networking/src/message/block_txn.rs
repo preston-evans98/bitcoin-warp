@@ -1,7 +1,7 @@
 use bytes::Buf;
 use serde_derive::{Deserializable, Serializable};
 use shared::{BlockHash, Serializable, Transaction};
-#[derive(Serializable, Deserializable, Debug)]
+#[derive(Serializable, Deserializable, Debug, Clone)]
 pub struct BlockTxn {
     block_hash: BlockHash,
     txs: Vec<Transaction>,

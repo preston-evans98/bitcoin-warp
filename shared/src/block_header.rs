@@ -6,7 +6,7 @@ use crate::{u256, DeserializationError};
 use bytes::Buf;
 use serde_derive::Serializable;
 use warp_crypto::sha256d;
-#[derive(Serializable, Debug)]
+#[derive(Serializable, Debug, Clone)]
 pub struct BlockHeader {
     version: u32,
     prev_hash: block::Hash,
@@ -123,7 +123,7 @@ impl BlockHeader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Nbits {
     target: u256,
 }

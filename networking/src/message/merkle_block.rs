@@ -2,7 +2,7 @@ use bytes::Buf;
 use serde_derive::{Deserializable, Serializable};
 use shared::{BlockHeader, TxID};
 use shared::{CompactInt, Serializable};
-#[derive(Deserializable, Serializable, Debug)]
+#[derive(Deserializable, Serializable, Debug, Clone)]
 pub struct MerkleBlock {
     block_header: BlockHeader,
     transaction_count: u32,

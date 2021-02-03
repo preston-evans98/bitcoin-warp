@@ -2,7 +2,7 @@ use crate::{Deserializable, DeserializationError, Serializable};
 use bytes::Buf;
 use std::net::SocketAddr;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EncapsulatedAddr {
     time: u32,
     services: u64,

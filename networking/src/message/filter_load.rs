@@ -2,7 +2,7 @@ use bytes::Buf;
 use serde_derive::Deserializable;
 use shared::CompactInt;
 use shared::Serializable;
-#[derive(Deserializable, Debug)]
+#[derive(Deserializable, Debug, Clone)]
 #[allow(non_snake_case)]
 pub struct FilterLoad {
     filter: Vec<u8>,

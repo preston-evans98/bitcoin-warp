@@ -3,7 +3,7 @@ use byteorder::{LittleEndian, WriteBytesExt};
 macro_rules! impl_hash_type {
     ($name: ident) => {
         // TODO: Impl hash
-        #[derive(Debug, PartialEq, Hash, Eq)]
+        #[derive(Debug, PartialEq, Hash, Eq, Clone)]
         pub struct $name([u8; 32]);
 
         impl $name {
