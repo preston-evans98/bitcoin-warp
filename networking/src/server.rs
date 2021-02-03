@@ -1,4 +1,6 @@
-use crate::{BitcoinCodec, Message, NetworkRequest, NetworkResponse, PeerError};
+use crate::{
+    message::FilterLoad, BitcoinCodec, Message, NetworkRequest, NetworkResponse, PeerError,
+};
 use futures::{SinkExt, StreamExt};
 use shared::{u256, Block, BlockHash, BlockHeader, EncapsulatedAddr, Transaction};
 use std::{
@@ -73,20 +75,15 @@ impl<NodeDataStore> Server<NodeDataStore> {
     ///This function handles inbound unsolicited messages
     async fn handle_ready(&mut self, response: Message) -> Result<(), PeerError> {
         match response {
-            Message::FilterLoad {
-                filter,
-                n_hash_funcs,
-                n_flags,
-                n_tweak,
-            } => {
-                self.load_filter(filter, n_hash_funcs, n_flags, n_tweak);
+            Message::FilterLoad(filter_load) => {
+                self.load_filter(filter_load);
                 Ok(())
             }
-            Message::FilterAdd { elements } => {
+            Message::FilterAdd(elements) => {
                 self.add_filter(elements);
                 Ok(())
             }
-            Message::FilterClear {} => {
+            Message::FilterClear => {
                 self.clear_filter();
                 Ok(())
             }
@@ -108,10 +105,10 @@ impl<NodeDataStore> Server<NodeDataStore> {
             self.state
         {
             match response {
-                Message::BlockTxn { block_hash, txs } => {
+                Message::BlockTxn(block_txn) => {
                     unimplemented!()
                 }
-                Message::Block { block } => {
+                Message::Block(block) => {
                     // If the block is one we requested, remove it from our pending set and add it to the response
                     if requested_blocks.remove(block.header().hash()) {
                         accumulated_blocks.push(block);
@@ -134,7 +131,9 @@ impl<NodeDataStore> Server<NodeDataStore> {
         //TODO might need an if to check the serverstate as the other ones do.
         if let ServerState::AwaitingPeers(ref mut addrs) = self.state {
             match response {
-                Message::Addr { addrs } => {
+                Message::Addr(new_addrs) => {
+                    // FIXME: put in server state
+                    // addrs.extend(new_addrs.iter());
                     self.clean_up_server_state();
                 }
                 _ => unimplemented!(),
@@ -149,19 +148,14 @@ impl<NodeDataStore> Server<NodeDataStore> {
     async fn handle_inbound_headers(&mut self, response: Message) -> Result<(), PeerError> {
         if let ServerState::AwaitingHeaders(ref mut accumulated_headers) = self.state {
             match response {
-                Message::Headers { headers } => {
+                Message::Headers(headers) => {
                     //assuming headers are the ones we want, may want to come back and check them here first before passing them back to peer. TODO
                     self.clean_up_server_state();
                     Ok(())
                 }
-                Message::Reject {
-                    message,
-                    code,
-                    reason,
-                    extra_data,
-                } => {
+                Message::Reject(reject) => {
                     //need to log the reject message and then return the error back up
-                    Err(PeerError::MessageRejected(reason))
+                    Err(PeerError::MessageRejected(String::from(reject.reason())))
                 }
                 _ => unimplemented!(),
             }
@@ -258,8 +252,7 @@ impl<NodeDataStore> Server<NodeDataStore> {
     // }
 
     async fn handle_request(&mut self, request: NetworkRequest) {}
-    async fn load_filter(&mut self, filter: Vec<u8>, n_hash_funcs: u32, n_flags: u8, n_tweak: u32) {
-    }
+    async fn load_filter(&mut self, filter_load: FilterLoad) {}
     async fn add_filter(&mut self, elements: Vec<Vec<u8>>) {}
     async fn clear_filter(&mut self) {}
     async fn clean_up_server_state(&mut self) {

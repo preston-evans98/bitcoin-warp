@@ -2,7 +2,6 @@ use warp_crypto::merkleize;
 
 pub use crate::hashes::MerkleRoot;
 use crate::TxID;
-use serde_derive::{Deserializable, Serializable};
 
 // #[derive(Serializable, Deserializable, Debug)]
 // pub struct MerkleRoot {
@@ -25,7 +24,7 @@ impl MerkleRoot {
         MerkleRoot::from(merkle_root(txids.iter().map(|h| *h)))
     }
 
-    pub fn from_iter<'a, I: ExactSizeIterator<Item = &'a TxID>>(mut iter: I) -> MerkleRoot {
+    pub fn from_iter<'a, I: ExactSizeIterator<Item = &'a TxID>>(iter: I) -> MerkleRoot {
         MerkleRoot::from(merkle_root(iter))
     }
     pub fn root(&self) -> &[u8; 32] {

@@ -1,6 +1,6 @@
 use core::panic;
 
-use crate::{self as shared, Cached, Serializable};
+use crate::{self as shared, Cached, Serializable, Transaction};
 use crate::{block, MerkleRoot};
 use crate::{u256, DeserializationError};
 use bytes::Buf;
@@ -106,6 +106,20 @@ impl BlockHeader {
             let hash = sha256d(&serial);
             self.own_hash = Cached::from(block::Hash::from(hash));
         }
+    }
+    // #[cfg(test)]
+    pub fn _test_header() -> BlockHeader {
+        let mut txs = Vec::with_capacity(2);
+        txs.push(Transaction::_test_coinbase());
+        txs.push(Transaction::_test_normal());
+        BlockHeader::new(
+            23,
+            block::Hash::from_u64(12345678),
+            shared::MerkleRoot::from_iter(txs.iter().map(|tx| tx.txid())),
+            2342,
+            shared::Nbits::new(shared::u256::from(8719)),
+            99,
+        )
     }
 }
 

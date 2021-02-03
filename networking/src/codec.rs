@@ -1,14 +1,21 @@
-use crate::message_header::MessageHeader;
-use crate::types::*;
-use crate::Message;
+use crate::{
+    message::{BlockTxn, CompactBlock, FilterLoad, GetBlockTxn, Reject, SendCompact, Version},
+    types::*,
+};
+use crate::{
+    message::{GetBlocks, GetHeaders},
+    Message,
+};
+use crate::{
+    message::{MerkleBlock, Payload},
+    message_header::MessageHeader,
+};
 use byteorder::WriteBytesExt;
 use bytes::{Buf, BufMut, BytesMut};
 use shared::EncapsulatedAddr;
 use shared::Serializable;
 use shared::Transaction;
-use shared::{
-    u256, BlockHash, BlockHeader, CompactInt, Deserializable, DeserializationError, InventoryData,
-};
+use shared::{BlockHeader, CompactInt, Deserializable, DeserializationError, InventoryData};
 use tracing::{self, debug, trace};
 /// A [Codec](https://tokio-rs.github.io/tokio/doc/tokio_util/codec/index.html) converting a raw TcpStream into a Sink + Stream of Bitcoin Wire Protocol [`Message`s](crate::Message).
 ///
@@ -138,148 +145,56 @@ impl Codec {
     /// Returns the size of message (excluding the header) after serialization
     fn get_serialized_size(msg: &Message) -> usize {
         match msg {
-            Message::Addr { ref addrs } => {
-                CompactInt::size(addrs.len()) + addrs.len() * (4 + 8 + 18)
-            }
-            Message::BlockTxn {
-                block_hash: _,
-                ref txs,
-            } => {
-                32 + CompactInt::size(txs.len()) + txs.iter().fold(0, |total, tx| total + tx.len())
-            }
-            Message::Block { ref block } => {
-                BlockHeader::len()
-                    + CompactInt::size(block.transactions().len())
-                    + block
-                        .transactions()
-                        .iter()
-                        .fold(0, |total, tx| total + tx.len())
-            }
-            Message::CompactBlock {
-                header: _,
-                nonce: _,
-                ref short_ids,
-                ref prefilled_txns,
-            } => {
-                BlockHeader::len()
-                    + 8
-                    + CompactInt::size(short_ids.len())
-                    + 8 * short_ids.len()
-                    + CompactInt::size(prefilled_txns.len())
-                    + prefilled_txns.iter().fold(0, |total, pre_tx| {
-                        let txn_len = pre_tx.tx().len();
-                        total + txn_len + CompactInt::size(txn_len)
-                    })
-            }
-            Message::FeeFilter { .. } => 8,
-            Message::FilterAdd { ref elements } => {
+            Message::Addr(ref addrs) => CompactInt::size(addrs.len()) + addrs.len() * (4 + 8 + 18),
+            Message::BlockTxn(block_txn) => block_txn.serialized_size(),
+            Message::Block(block) => block.serialized_size(),
+            Message::CompactBlock(compact_block) => compact_block.serialized_size(),
+            Message::FeeFilter(_) => 8,
+            Message::FilterAdd(elements) => {
                 elements.iter().fold(0, |total, elt| {
                     total + elt.len() + CompactInt::size(elt.len())
                 }) + CompactInt::size(elements.len())
             }
-            Message::FilterClear {} => 0,
-            Message::FilterLoad {
-                filter,
-                n_hash_funcs: _,
-                n_tweak: _,
-                n_flags: _,
-            } => CompactInt::size(filter.len()) + filter.len() + 4 + 4 + 1,
-            Message::GetAddr {} => 0,
-            Message::GetBlockTxn {
-                block_hash: _,
-                ref indexes,
-            } => {
-                32 + CompactInt::size(indexes.len())
-                    + indexes.iter().fold(0, |total, index| {
-                        total + CompactInt::size(index.value() as usize)
-                    })
-            }
-            Message::GetBlocks {
-                protocol_version: _,
-                ref block_header_hashes,
-                stop_hash: _,
-            } => {
-                4 + CompactInt::size(block_header_hashes.len())
-                    + (block_header_hashes.len() * 32)
-                    + 32
-            }
-            Message::GetData { ref inventory } => {
+            Message::FilterClear => 0,
+            Message::FilterLoad(filter_load) => filter_load.serialized_size(),
+            Message::GetAddr => 0,
+            Message::GetBlockTxn(get_block_txn) => get_block_txn.serialized_size(),
+            Message::GetBlocks(get_blocks) => get_blocks.serialized_size(),
+            Message::GetData(inventory) => {
                 let mut size = CompactInt::size(inventory.len());
                 for inv in inventory.iter() {
                     size += inv.len();
                 }
                 size
             }
-            Message::GetHeaders {
-                protocol_version: _,
-                ref block_header_hashes,
-                stop_hash: _,
-            } => {
-                4 + CompactInt::size(block_header_hashes.len())
-                    + (block_header_hashes.len() * 32)
-                    + 32
-            }
-            Message::Headers { ref headers } => {
+            Message::GetHeaders(get_headers) => get_headers.serialized_size(),
+            Message::Headers(headers) => {
                 (headers.len() * (BlockHeader::len() + 1)) + CompactInt::size(headers.len())
             }
-            Message::Inv { ref inventory } => {
+            Message::Inv(inventory) => {
                 let mut size = CompactInt::size(inventory.len());
                 for inv in inventory.iter() {
                     size += inv.len();
                 }
                 size
             }
-            Message::MemPool {} => 0,
-            Message::MerkleBlock {
-                block_header: _,
-                transaction_count: _,
-                ref hashes,
-                ref flags,
-            } => {
-                BlockHeader::len()
-                + 4
-                + CompactInt::size(hashes.len())
-                + (hashes.len() * 32) //32 bytes for each "hash" as they are u256
-                + CompactInt::size(flags.len())
-                + flags.len()
-            }
-            Message::NotFound { ref inventory_data } => {
+            Message::MemPool => 0,
+            Message::MerkleBlock(merkle_block) => merkle_block.serialized_size(),
+            Message::NotFound(inventory_data) => {
                 let mut size = CompactInt::size(inventory_data.len());
                 for inv in inventory_data.iter() {
                     size += inv.len()
                 }
                 size
             }
-            Message::Ping { nonce: _ } => 8,
-            Message::Pong { nonce: _ } => 8,
-            Message::Reject {
-                message: _,
-                code: _,
-                reason: _,
-                extra_data: _,
-            } => {
-                unimplemented!()
-            }
-            Message::SendCompact {
-                announce: _,
-                version: _,
-            } => 9,
-            Message::SendHeaders {} => 0,
-            Message::Tx { ref transaction } => transaction.len(),
-            Message::Verack {} => 0,
-            Message::Version {
-                protocol_version: _,
-                services: _,
-                timestamp: _,
-                receiver_services: _,
-                receiver: _,
-                transmitter_services: _,
-                transmitter_ip: _,
-                nonce: _,
-                ref user_agent,
-                best_block: _,
-                relay: _,
-            } => 85 + CompactInt::size(user_agent.len()) + user_agent.len(),
+            Message::Ping(_) => 8,
+            Message::Pong(_) => 8,
+            Message::Reject(reject) => reject.serialized_size(),
+            Message::SendCompact(send_compact) => send_compact.serialized_size(),
+            Message::SendHeaders => 0,
+            Message::Tx(transaction) => transaction.len(),
+            Message::Verack => 0,
+            Message::Version(version) => version.serialized_size(),
         }
     }
 
@@ -291,7 +206,7 @@ impl Codec {
         match item {
             // Custom 'Headers' serialization is necessary to account for extra Transaction count field.
             // Note that transaction count is always zero in a headers message.
-            Message::Headers { ref headers } => {
+            Message::Headers(headers) => {
                 shared::CompactInt::from(headers.len()).serialize(target)?;
                 for item in headers.iter() {
                     item.serialize(target)?;
@@ -313,39 +228,20 @@ impl Codec {
             DecoderState::Body { ref header } => {
                 let msg = match header.get_command() {
                     crate::Command::Addr => {
-                        let addrs = Vec::<EncapsulatedAddr>::deserialize(&mut src)?;
-                        Message::Addr { addrs }
+                        Message::Addr(Vec::<EncapsulatedAddr>::deserialize(&mut src)?)
                     }
-                    crate::Command::Version => Message::Version {
-                        protocol_version: ProtocolVersion::deserialize(&mut src)?,
-                        services: Services::deserialize(&mut src)?,
-                        timestamp: u64::deserialize(&mut src)?,
-                        receiver_services: Services::deserialize(&mut src)?,
-                        receiver: std::net::SocketAddr::deserialize(&mut src)?,
-                        transmitter_services: Services::deserialize(&mut src)?,
-                        transmitter_ip: std::net::SocketAddr::deserialize(&mut src)?,
-                        nonce: Nonce::deserialize(&mut src)?,
-                        user_agent: String::deserialize(&mut src)?,
-                        best_block: u32::deserialize(&mut src)?,
-                        relay: bool::deserialize(&mut src)?,
-                    },
-                    crate::Command::Verack => Message::Verack {},
-                    crate::Command::GetBlocks => Message::GetBlocks {
-                        protocol_version: ProtocolVersion::deserialize(&mut src)?,
-                        block_header_hashes: <Vec<u256>>::deserialize(&mut src)?,
-                        stop_hash: u256::deserialize(&mut src)?,
-                    },
-                    crate::Command::GetData => Message::GetData {
-                        inventory: <Vec<InventoryData>>::deserialize(&mut src)?,
-                    },
-                    crate::Command::Block => Message::Block {
-                        block: shared::Block::deserialize(&mut src)?,
-                    },
-                    crate::Command::GetHeaders => Message::GetHeaders {
-                        protocol_version: ProtocolVersion::deserialize(&mut src)?,
-                        block_header_hashes: <Vec<u256>>::deserialize(&mut src)?,
-                        stop_hash: u256::deserialize(&mut src)?,
-                    },
+                    crate::Command::Version => Message::Version(Version::deserialize(&mut src)?),
+                    crate::Command::Verack => Message::Verack,
+                    crate::Command::GetBlocks => {
+                        Message::GetBlocks(GetBlocks::deserialize(&mut src)?)
+                    }
+                    crate::Command::GetData => {
+                        Message::GetData(<Vec<InventoryData>>::deserialize(&mut src)?)
+                    }
+                    crate::Command::Block => Message::Block(shared::Block::deserialize(&mut src)?),
+                    crate::Command::GetHeaders => {
+                        Message::GetHeaders(GetHeaders::deserialize(&mut src)?)
+                    }
                     crate::Command::Headers => {
                         // Custom deserialization necessary to account for extra
                         // Transaction count field. Note that transaction count is always zero in a headers message.
@@ -355,42 +251,29 @@ impl Codec {
                             result.push(BlockHeader::deserialize(&mut src)?);
                             let _ = u8::deserialize(&mut src)?;
                         }
-                        Message::Headers { headers: result }
+                        Message::Headers(result)
                     }
-                    crate::Command::Inv => Message::Inv {
-                        inventory: <Vec<InventoryData>>::deserialize(&mut src)?,
-                    },
-                    crate::Command::MemPool => Message::MemPool {},
-                    crate::Command::MerkleBlock => Message::MerkleBlock {
-                        block_header: BlockHeader::deserialize(&mut src)?,
-                        transaction_count: u32::deserialize(&mut src)?,
-                        hashes: <Vec<u256>>::deserialize(&mut src)?,
-                        flags: <Vec<u8>>::deserialize(&mut src)?,
-                    },
-                    crate::Command::CmpctBlock => Message::CompactBlock {
-                        header: BlockHeader::deserialize(&mut src)?,
-                        nonce: Nonce::deserialize(&mut src)?,
-                        short_ids: <Vec<u64>>::deserialize(&mut src)?,
-                        prefilled_txns: <Vec<PrefilledTransaction>>::deserialize(&mut src)?,
-                    },
-                    crate::Command::GetBlockTxn => Message::GetBlockTxn {
-                        block_hash: <[u8; 32]>::deserialize(&mut src)?,
-                        indexes: <Vec<CompactInt>>::deserialize(&mut src)?,
-                    },
-                    crate::Command::BlockTxn => Message::BlockTxn {
-                        block_hash: <[u8; 32]>::deserialize(&mut src)?,
-                        txs: <Vec<Transaction>>::deserialize(&mut src)?,
-                    },
-                    crate::Command::SendCmpct => Message::SendCompact {
-                        announce: bool::deserialize(&mut src)?,
-                        version: u64::deserialize(&mut src)?,
-                    },
-                    crate::Command::NotFound => Message::NotFound {
-                        inventory_data: <Vec<InventoryData>>::deserialize(&mut src)?,
-                    },
-                    crate::Command::Tx => Message::Tx {
-                        transaction: Transaction::deserialize(&mut src)?,
-                    },
+                    crate::Command::Inv => {
+                        Message::Inv(<Vec<InventoryData>>::deserialize(&mut src)?)
+                    }
+                    crate::Command::MemPool => Message::MemPool,
+                    crate::Command::MerkleBlock => {
+                        Message::MerkleBlock(MerkleBlock::deserialize(&mut src)?)
+                    }
+                    crate::Command::CmpctBlock => {
+                        Message::CompactBlock(CompactBlock::deserialize(&mut src)?)
+                    }
+                    crate::Command::GetBlockTxn => {
+                        Message::GetBlockTxn(GetBlockTxn::deserialize(&mut src)?)
+                    }
+                    crate::Command::BlockTxn => Message::BlockTxn(BlockTxn::deserialize(&mut src)?),
+                    crate::Command::SendCmpct => {
+                        Message::SendCompact(SendCompact::deserialize(&mut src)?)
+                    }
+                    crate::Command::NotFound => {
+                        Message::NotFound(<Vec<InventoryData>>::deserialize(&mut src)?)
+                    }
+                    crate::Command::Tx => Message::Tx(Transaction::deserialize(&mut src)?),
                     crate::Command::Alert => {
                         // TODO: Verify that no additional cleanup is required.
                         self.set_decoder_state(DecoderState::Header);
@@ -398,43 +281,26 @@ impl Codec {
                             "Received Alert message! Alert is insecure and deprecated"
                         )));
                     }
-                    crate::Command::FeeFilter => Message::FeeFilter {
-                        feerate: u64::deserialize(&mut src)?,
-                    },
-                    crate::Command::FilterAdd => Message::FilterAdd {
-                        elements: <Vec<Vec<u8>>>::deserialize(&mut src)?,
-                    },
-                    crate::Command::FilterClear => Message::FilterClear {},
-                    crate::Command::FilterLoad => Message::FilterLoad {
-                        filter: <Vec<u8>>::deserialize(&mut src)?,
-                        n_hash_funcs: u32::deserialize(&mut src)?,
-                        n_tweak: u32::deserialize(&mut src)?,
-                        n_flags: u8::deserialize(&mut src)?,
-                    },
-                    crate::Command::GetAddr => Message::GetAddr {},
-                    crate::Command::Ping => Message::Ping {
-                        nonce: Nonce::deserialize(&mut src)?,
-                    },
-                    crate::Command::Pong => Message::Pong {
-                        nonce: Nonce::deserialize(&mut src)?,
-                    },
-                    crate::Command::Reject => Message::Reject {
-                        message: String::deserialize(&mut src)?,
-                        code: u8::deserialize(&mut src)?,
-                        reason: String::deserialize(&mut src)?,
-                        extra_data: <[u8; 32]>::deserialize(&mut src).ok(),
-                    },
-                    crate::Command::SendHeaders => Message::SendHeaders {},
+                    crate::Command::FeeFilter => Message::FeeFilter(u64::deserialize(&mut src)?),
+                    crate::Command::FilterAdd => {
+                        Message::FilterAdd(<Vec<Vec<u8>>>::deserialize(&mut src)?)
+                    }
+                    crate::Command::FilterClear => Message::FilterClear,
+                    crate::Command::FilterLoad => {
+                        Message::FilterLoad(FilterLoad::deserialize(&mut src)?)
+                    }
+                    crate::Command::GetAddr => Message::GetAddr,
+                    crate::Command::Ping => Message::Ping(Nonce::deserialize(&mut src)?),
+                    crate::Command::Pong => Message::Pong(Nonce::deserialize(&mut src)?),
+                    crate::Command::Reject => Message::Reject(Reject::deserialize(&mut src)?),
+                    crate::Command::SendHeaders => Message::SendHeaders,
                 };
 
                 trace!("Received {:?}", msg);
-
                 if src.remaining() != 0 {
                     debug!("Had leftover bytes after decoding message. Weird.",);
                 }
-
                 self.set_decoder_state(DecoderState::Header);
-
                 Ok(msg)
             }
         }
@@ -505,9 +371,9 @@ mod consensus_deser_tests {
         let cutoff_block = hex::decode("010000004ddccd549d28f385ab457e98d1b11ce80bfea2c5ab93015ade4973e400000000bf4473e53794beae34e64fccc471dace6ae544180816f89591894e0f417a914cd74d6e49ffff001d323b3a7b0201000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0804ffff001d026e04ffffffff0100f2052a0100000043410446ef0102d1ec5240f0d061a4246c1bdef63fc3dbab7733052fbbf0ecd8f41fc26bf049ebb4f9527f374280259e7cfa99c48b0e3f39c51347a19a5819651503a5ac00000000010000000321f75f3139a013f50f315b23b0c9a2b6eac31e2bec98e5891c924664889942260000000049483045022100cb2c6b346a978ab8c61b18b5e9397755cbd17d6eb2fe0083ef32e067fa6c785a02206ce44e613f31d9a6b0517e46f3db1576e9812cc98d159bfdaf759a5014081b5c01ffffffff79cda0945903627c3da1f85fc95d0b8ee3e76ae0cfdc9a65d09744b1f8fc85430000000049483045022047957cdd957cfd0becd642f6b84d82f49b6cb4c51a91f49246908af7c3cfdf4a022100e96b46621f1bffcf5ea5982f88cef651e9354f5791602369bf5a82a6cd61a62501fffffffffe09f5fe3ffbf5ee97a54eb5e5069e9da6b4856ee86fc52938c2f979b0f38e82000000004847304402204165be9a4cbab8049e1af9723b96199bfd3e85f44c6b4c0177e3962686b26073022028f638da23fc003760861ad481ead4099312c60030d4cb57820ce4d33812a5ce01ffffffff01009d966b01000000434104ea1feff861b51fe3f5f8a3b12d0f4712db80e919548a80839fc47c6a21e66d957e9c5d8cd108c7a2d2324bad71f9904ac0ae7336507d785b17a2c115e427a32fac").unwrap();
 
         let prevhash = "4ddccd549d28f385ab457e98d1b11ce80bfea2c5ab93015ade4973e400000000";
-        let merkle =
-            hex::decode("bf4473e53794beae34e64fccc471dace6ae544180816f89591894e0f417a914c")
-                .unwrap();
+        // let merkle =
+        //     hex::decode("bf4473e53794beae34e64fccc471dace6ae544180816f89591894e0f417a914c")
+        //         .unwrap();
         // let work = Uint256([0x100010001u64, 0, 0, 0]);
 
         let decode: Result<Block, _> = Block::deserialize(&mut BytesMut::from(&some_block[..]));
@@ -560,7 +426,6 @@ mod consensus_deser_tests {
 //    - Remove wrappers over Codec functionality (msg.to_bytes(), msg.serialized_size())
 #[cfg(test)]
 mod message_size_tests {
-    use crate::types::PrefilledTransaction;
     use crate::{
         BitcoinCodec,
         Message::{self, *},
@@ -571,7 +436,6 @@ mod message_size_tests {
 
     impl Message {
         fn to_bytes(&self) -> Result<BytesMut, std::io::Error> {
-            // let mut out = Vec::with_capacity(codec.get_serialized_size(&self));
             let codec = BitcoinCodec::new(0);
             let out = BytesMut::with_capacity(BitcoinCodec::get_serialized_size(&self));
             let mut out = out.writer();
@@ -590,145 +454,15 @@ mod message_size_tests {
         let mut addrs = Vec::with_capacity(2);
         addrs.push(addr1);
         addrs.push(addr2);
-        let msg = Addr { addrs };
-        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-        assert_eq!(serial.len(), msg.serialized_size());
-        assert_eq!(serial.len(), serial.capacity())
-    }
-    #[test]
-    fn blocktxn_serial_size_empty() {
-        let txs = Vec::with_capacity(2);
-        let msg = BlockTxn {
-            block_hash: [1u8; 32],
-            txs,
-        };
+        let msg = Addr(addrs);
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
     }
 
-    #[test]
-    fn blocktxn_serial_size_full() {
-        let previous_outpoint = shared::TxOutpoint::new(shared::u256::from(1), 438);
-        let txin1 = shared::TxInput::new(previous_outpoint, Vec::from([8u8; 21]), 1);
-        let txin2 = shared::TxInput::new(
-            shared::TxOutpoint::new(shared::u256::new(), 0),
-            Vec::new(),
-            2,
-        );
-        let mut txins = Vec::new();
-        txins.push(txin1);
-        txins.push(txin2);
-        let mut outputs = Vec::new();
-        let out1 = shared::TxOutput::new(1, Vec::from([3u8; 11]));
-        let out2 = shared::TxOutput::new(0, Vec::new());
-        outputs.push(out1);
-        outputs.push(out2);
-        let tx1 = shared::Transaction::new(0, txins, outputs);
-        let tx2 = shared::Transaction::new(1, Vec::new(), Vec::new());
-
-        let mut txs = Vec::with_capacity(2);
-        txs.push(tx1);
-        txs.push(tx2);
-        let msg = BlockTxn {
-            block_hash: [1u8; 32],
-            txs,
-        };
-        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-        assert_eq!(serial.len(), msg.serialized_size());
-        assert_eq!(serial.len(), serial.capacity())
-    }
-    #[test]
-    fn block_serial_size() {
-        let previous_outpoint = shared::TxOutpoint::new(shared::u256::from(1), 438);
-        let txin1 = shared::TxInput::new(previous_outpoint, Vec::from([8u8; 21]), 1);
-        let txin2 = shared::TxInput::new(
-            shared::TxOutpoint::new(shared::u256::new(), 0),
-            Vec::new(),
-            2,
-        );
-        let mut txins = Vec::new();
-        txins.push(txin1);
-        txins.push(txin2);
-        let mut outputs = Vec::new();
-        let out1 = shared::TxOutput::new(1, Vec::from([3u8; 11]));
-        let out2 = shared::TxOutput::new(0, Vec::new());
-        outputs.push(out1);
-        outputs.push(out2);
-        let tx1 = shared::Transaction::new(0, txins, outputs);
-        let tx2 = shared::Transaction::new(1, Vec::new(), Vec::new());
-
-        let mut txs = Vec::with_capacity(2);
-        txs.push(tx1);
-        txs.push(tx2);
-        let block_header = shared::BlockHeader::new(
-            23,
-            BlockHash::from_u64(12345678),
-            shared::MerkleRoot::from_u64(9876543),
-            2342,
-            shared::Nbits::new(shared::u256::from(8719)),
-            99,
-        );
-
-        let msg = Block {
-            block: shared::Block::new(block_header, txs),
-        };
-        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-        assert_eq!(serial.len(), msg.serialized_size());
-        assert_eq!(serial.len(), serial.capacity())
-    }
-
-    #[test]
-    fn compact_block_serial_size() {
-        let previous_outpoint = shared::TxOutpoint::new(shared::u256::from(1), 438);
-        let txin1 = shared::TxInput::new(previous_outpoint, Vec::from([8u8; 21]), 1);
-        let txin2 = shared::TxInput::new(
-            shared::TxOutpoint::new(shared::u256::new(), 0),
-            Vec::new(),
-            2,
-        );
-        let mut txins = Vec::new();
-        txins.push(txin1);
-        txins.push(txin2);
-        let mut outputs = Vec::new();
-        let out1 = shared::TxOutput::new(1, Vec::from([3u8; 11]));
-        let out2 = shared::TxOutput::new(0, Vec::new());
-        outputs.push(out1);
-        outputs.push(out2);
-        let tx1 = PrefilledTransaction::new(
-            shared::CompactInt::from(1),
-            shared::Transaction::new(0, txins, outputs),
-        );
-        let tx2 = PrefilledTransaction::new(
-            shared::CompactInt::from(1),
-            Transaction::new(1, Vec::new(), Vec::new()),
-        );
-
-        let mut txs = Vec::with_capacity(2);
-        txs.push(tx1);
-        txs.push(tx2);
-        let header = BlockHeader::new(
-            23,
-            BlockHash::from_u64(12345678),
-            MerkleRoot::from_u64(9876543),
-            2342,
-            shared::Nbits::new(shared::u256::from(8719)),
-            99,
-        );
-
-        let msg = CompactBlock {
-            header,
-            nonce: 1928712,
-            short_ids: Vec::from([8219u64; 7]),
-            prefilled_txns: txs,
-        };
-        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-        assert_eq!(serial.len(), msg.serialized_size());
-        assert_eq!(serial.len(), serial.capacity())
-    }
     #[test]
     fn feefilter_serial_size() {
-        let msg = FeeFilter { feerate: 34567 };
+        let msg = FeeFilter(34567);
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
@@ -738,62 +472,22 @@ mod message_size_tests {
         let inner1 = Vec::from([1u8; 32]);
         let inner2 = Vec::from([7u8; 11]);
         let outer = Vec::from([inner1, inner2]);
-        let msg = FilterAdd { elements: outer };
+        let msg = FilterAdd(outer);
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
     }
     #[test]
     fn filterclear_serial_size() {
-        let msg = FilterClear {};
+        let msg = FilterClear;
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
     }
-    #[test]
-    fn filterload_serial_size() {
-        let msg = FilterLoad {
-            filter: Vec::from([23u8; 22]),
-            n_hash_funcs: 0x129381,
-            n_tweak: 0xf2391381,
-            n_flags: 32,
-        };
-        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-        assert_eq!(serial.len(), msg.serialized_size());
-        assert_eq!(serial.len(), serial.capacity())
-    }
+
     #[test]
     fn get_addr_serial_size() {
         let msg = GetAddr {};
-        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-        assert_eq!(serial.len(), msg.serialized_size());
-        assert_eq!(serial.len(), serial.capacity())
-    }
-    #[test]
-    fn get_block_txn_serial_size() {
-        use shared::CompactInt;
-        let int1 = CompactInt::from(567892322);
-        let int2 = CompactInt::from(7892322);
-        let int3 = CompactInt::from(0);
-        let msg = GetBlockTxn {
-            block_hash: [242u8; 32],
-            indexes: Vec::from([int1, int2, int3]),
-        };
-        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-        assert_eq!(serial.len(), msg.serialized_size());
-        assert_eq!(serial.len(), serial.capacity())
-    }
-    #[test]
-    fn get_blocks_serial_size() {
-        use shared::u256;
-        let int1 = u256::from(567892322);
-        let int2 = u256::from(7892322);
-        let int3 = u256::from(1);
-        let msg = GetBlocks {
-            protocol_version: 32371,
-            block_header_hashes: Vec::from([int1, int2, int3]),
-            stop_hash: u256::new(),
-        };
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
@@ -824,36 +518,14 @@ mod message_size_tests {
         };
 
         let inventory = Vec::from([d1, d2, d3]);
-        let msg = GetData { inventory };
-        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-        assert_eq!(serial.len(), msg.serialized_size());
-        assert_eq!(serial.len(), serial.capacity())
-    }
-    #[test]
-    fn get_headers_serial_size() {
-        use shared::u256;
-        let int1 = u256::from(567892322);
-        let int2 = u256::from(7892322);
-        let int3 = u256::from(1);
-        let msg = GetHeaders {
-            protocol_version: 32371,
-            block_header_hashes: Vec::from([int1, int2, int3]),
-            stop_hash: u256::new(),
-        };
+        let msg = GetData(inventory);
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
     }
     #[test]
     fn headers_serial_size() {
-        let h1 = BlockHeader::new(
-            23,
-            BlockHash::from_u64(12345678),
-            MerkleRoot::from_u64(9876543),
-            2342,
-            shared::Nbits::new(shared::u256::from(8719)),
-            99,
-        );
+        let h1 = BlockHeader::_test_header();
         let h2 = BlockHeader::new(
             0,
             BlockHash::from_u64(2),
@@ -865,7 +537,7 @@ mod message_size_tests {
 
         let headers = Vec::from([h1, h2]);
 
-        let msg = Headers { headers };
+        let msg = Headers(headers);
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
@@ -894,39 +566,14 @@ mod message_size_tests {
         };
 
         let inventory = Vec::from([d1, d2, d3]);
-        let msg = Inv { inventory };
+        let msg = Inv(inventory);
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
     }
     #[test]
     fn mempool_serial_size() {
-        let msg = MemPool {};
-        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-        assert_eq!(serial.len(), msg.serialized_size());
-        assert_eq!(serial.len(), serial.capacity())
-    }
-    #[test]
-    fn merkle_block_serial_size() {
-        use shared::u256;
-        let int1 = u256::from(567892322);
-        let int2 = u256::from(7892322);
-        let int3 = u256::from(1);
-        let block_header = BlockHeader::new(
-            23,
-            BlockHash::from_u64(12345678),
-            MerkleRoot::from_u64(9876543),
-            2342,
-            shared::Nbits::new(u256::from(8719)),
-            99,
-        );
-
-        let msg = MerkleBlock {
-            block_header,
-            transaction_count: 113,
-            hashes: vec![int1, int2, int3],
-            flags: Vec::from([232u8, 11]),
-        };
+        let msg = MemPool;
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
@@ -956,9 +603,7 @@ mod message_size_tests {
         };
 
         let inventory = Vec::from([d1, d2, d3]);
-        let msg = NotFound {
-            inventory_data: inventory,
-        };
+        let msg = NotFound(inventory);
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
@@ -966,7 +611,7 @@ mod message_size_tests {
 
     #[test]
     fn ping_serial_size() {
-        let msg = Ping { nonce: 34567 };
+        let msg = Ping(34567);
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
@@ -974,18 +619,7 @@ mod message_size_tests {
 
     #[test]
     fn pong_serial_size() {
-        let msg = Pong { nonce: 34567 };
-        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-        assert_eq!(serial.len(), msg.serialized_size());
-        assert_eq!(serial.len(), serial.capacity())
-    }
-
-    #[test]
-    fn send_compact_serial_size() {
-        let msg = SendCompact {
-            announce: true,
-            version: 32381,
-        };
+        let msg = Pong(34567);
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
@@ -993,7 +627,7 @@ mod message_size_tests {
 
     #[test]
     fn send_headers_serial_size() {
-        let msg = SendHeaders {};
+        let msg = SendHeaders;
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
@@ -1001,24 +635,8 @@ mod message_size_tests {
 
     #[test]
     fn tx_serial_size() {
-        let previous_outpoint = shared::TxOutpoint::new(shared::u256::from(1), 438);
-        let txin1 = shared::TxInput::new(previous_outpoint, Vec::from([8u8; 21]), 1);
-        let txin2 = shared::TxInput::new(
-            shared::TxOutpoint::new(shared::u256::new(), 0),
-            Vec::new(),
-            2,
-        );
-        let mut txins = Vec::new();
-        txins.push(txin1);
-        txins.push(txin2);
-        let mut outputs = Vec::new();
-        let out1 = shared::TxOutput::new(1, Vec::from([3u8; 11]));
-        let out2 = shared::TxOutput::new(0, Vec::new());
-        outputs.push(out1);
-        outputs.push(out2);
-        let tx = Transaction::new(0, txins, outputs);
-
-        let msg = Tx { transaction: tx };
+        let tx = Transaction::_test_normal();
+        let msg = Tx(tx);
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())
@@ -1026,20 +644,7 @@ mod message_size_tests {
 
     #[test]
     fn verack_serial_size() {
-        let msg = Verack {};
-        let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
-        assert_eq!(serial.len(), msg.serialized_size());
-        assert_eq!(serial.len(), serial.capacity())
-    }
-    #[test]
-    fn version_serial_size() {
-        let msg = Message::version(
-            ([192, 168, 0, 1], 8333).into(),
-            2371,
-            ([192, 168, 0, 2], 8333).into(),
-            0x2329381,
-            &config::Config::mainnet(),
-        );
+        let msg = Verack;
         let serial = msg.to_bytes().expect("Serializing into vec shouldn't fail");
         assert_eq!(serial.len(), msg.serialized_size());
         assert_eq!(serial.len(), serial.capacity())

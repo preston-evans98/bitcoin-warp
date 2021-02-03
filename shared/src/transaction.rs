@@ -90,6 +90,26 @@ impl Transaction {
             .expect("Must fill txid at construction")
     }
 
+    // #[cfg(test)]
+    pub fn _test_coinbase() -> Transaction {
+        let raw = hex::decode("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff29034e0105062f503253482f0472d35454085fffedf2400000f90f54696d652026204865616c7468202100000000012c374495000000001976a914a09be8040cbf399926aeb1f470c37d1341f3b46588ac00000000").unwrap();
+        Transaction::deserialize(bytes::BytesMut::from(&raw[..])).unwrap()
+    }
+
+    // #[cfg(test)]
+    pub fn _test_normal() -> Transaction {
+        let raw = hex::decode(
+            "01000000017b1eabe0209b1fe794124575ef807057c77ada2138ae4fa8d6c4de\
+        0398a14f3f0000000000ffffffff01f0ca052a010000001976a914cbc20a7664\
+        f2f69e5355aa427045bc15e7c6c77288ac00000000",
+        )
+        .unwrap();
+        Transaction::deserialize(bytes::BytesMut::from(&raw[..])).unwrap()
+    }
+    // #[cfg(test)]
+    pub fn _test_txs() -> Vec<Transaction> {
+        vec![Transaction::_test_coinbase(), Transaction::_test_normal()]
+    }
     // pub fn deserialize(src: &mut BytesMut) -> Result<Self, DeserializationError> {
     //     // let src = Bytes::from(*src);
     //     let len = std::cmp::min(MAX_TX_LENGTH, src.remaining());

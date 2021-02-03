@@ -163,6 +163,15 @@ impl Deserializable for SocketAddr {
     }
 }
 
+impl<T: Sized + Deserializable> Deserializable for Option<T> {
+    fn deserialize<B: Buf>(target: B) -> Result<Option<T>> {
+        if target.remaining() < std::mem::size_of::<T>() {
+            return Ok(None);
+        }
+        Ok(Some(T::deserialize(target)?))
+    }
+}
+
 // TODO: Replace when const generics stabilize
 macro_rules! impl_deserializable_byte_array {
     ($size:expr) => {

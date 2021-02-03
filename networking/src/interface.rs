@@ -1,4 +1,4 @@
-use shared::{u256, Block, BlockHash, BlockHeader, EncapsulatedAddr, Transaction, TxID};
+use shared::{Block, BlockHash, BlockHeader, EncapsulatedAddr, Transaction, TxID};
 use std::collections::HashSet;
 /// NetworkRequest provides the inbound interface to the high level 'the rest of the network' abstraction.
 pub enum NetworkRequest {

@@ -76,11 +76,11 @@ fn serialize_variant(variant: &syn::Variant, name: &syn::Ident) -> quote::__priv
         .fields
         .iter()
         .map(|field| {
-            let ident = field
-                .ident
-                .clone()
-                .expect("Can only derive serialize for named variant fields");
-            quote! { ref #ident , }
+            if let Some(ident) = field.ident.clone() {
+                quote! { ref #ident , }
+            } else {
+                quote!(ref inner)
+            }
         })
         .collect();
 
@@ -88,15 +88,21 @@ fn serialize_variant(variant: &syn::Variant, name: &syn::Ident) -> quote::__priv
         .fields
         .iter()
         .map(|field| {
-            let ident = field
-                .ident
-                .clone()
-                .expect("Can only derive serialize for named variant fields");
-            quote! { #ident.serialize(target)?; }
+            if let Some(ident) = field.ident.clone() {
+                quote! { #ident.serialize(target)?; }
+            } else {
+                quote! { inner.serialize(target)?;}
+            }
         })
         .collect();
 
-    quote! { #name::#ident { #(#subfields)* } => {
-        #(#statements)*
-    } }
+    if subfields.len() > 0 {
+        quote! { #name::#ident ( #(#subfields)* ) => {
+            #(#statements)*
+        },}
+    } else {
+        quote! { #name::#ident => {
+            #(#statements)*
+        },}
+    }
 }

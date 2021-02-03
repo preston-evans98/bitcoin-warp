@@ -26,6 +26,21 @@ impl PrefilledTransaction {
     pub fn tx(&self) -> &Transaction {
         &self.tx
     }
+    pub fn len(&self) -> usize {
+        let txn_len = self.tx.len();
+        txn_len + CompactInt::size(txn_len)
+    }
+    pub fn _test_txs() -> Vec<PrefilledTransaction> {
+        let first = PrefilledTransaction {
+            index: CompactInt::from(0),
+            tx: Transaction::_test_coinbase(),
+        };
+        let second = PrefilledTransaction {
+            index: CompactInt::from(0),
+            tx: Transaction::_test_normal(),
+        };
+        vec![first, second]
+    }
 }
 
 pub type Services = u64;
