@@ -156,9 +156,13 @@ impl Deserializable for String {
 // TODO: test
 impl Deserializable for SocketAddr {
     fn deserialize<B: Buf>(mut target: B) -> Result<SocketAddr> {
+        if target.remaining() < 18 {
+            return Err(out_of_data("SocketAddr"));
+        }
         Ok(SocketAddr::from((
             <[u8; 16]>::deserialize(&mut target)?,
-            u16::deserialize(&mut target)?,
+            target.get_u16(),
+            // u16::read(&mut target)?,
         )))
     }
 }

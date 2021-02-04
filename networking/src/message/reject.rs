@@ -3,7 +3,7 @@ use serde_derive::Deserializable;
 use shared::Serializable;
 
 #[allow(unused)]
-#[derive(Deserializable, Debug)]
+#[derive(Deserializable, Debug, Clone)]
 pub struct Reject {
     message: String,
     code: u8,

@@ -6,7 +6,7 @@ use bytes::Buf;
 use serde_derive::{Deserializable, Serializable};
 use warp_crypto::sha256d;
 
-#[derive(Serializable, Debug)]
+#[derive(Serializable, Debug, Clone)]
 pub struct Transaction {
     version: i32,
     inputs: Vec<TxInput>,
@@ -131,7 +131,7 @@ impl Transaction {
     // }
 }
 
-#[derive(Deserializable, Serializable, Debug)]
+#[derive(Deserializable, Serializable, Debug, Clone)]
 pub struct TxInput {
     previous_outpoint: TxOutpoint,
     signature_script: Vec<u8>,
@@ -155,7 +155,7 @@ impl TxInput {
         self.previous_outpoint.index == std::u32::MAX && self.previous_outpoint.hash.is_zero()
     }
 }
-#[derive(Deserializable, Serializable, Debug)]
+#[derive(Deserializable, Serializable, Debug, Clone)]
 pub struct TxOutput {
     value: i64,
     pk_script: Vec<u8>,
@@ -168,7 +168,7 @@ impl TxOutput {
         TxOutput { value, pk_script }
     }
 }
-#[derive(Deserializable, Serializable, Debug)]
+#[derive(Deserializable, Serializable, Debug, Clone)]
 pub struct TxOutpoint {
     hash: u256,
     index: u32,

@@ -2,7 +2,7 @@ use bytes::Buf;
 use serde_derive::{Deserializable, Serializable};
 use shared::Serializable;
 
-#[derive(Serializable, Deserializable, Debug)]
+#[derive(Serializable, Deserializable, Debug, Clone)]
 pub struct SendCompact {
     announce: bool,
     version: u64,

@@ -4,7 +4,7 @@ use serde_derive::{Deserializable, Serializable};
 use shared::BlockHeader;
 use shared::CompactInt;
 use shared::Serializable;
-#[derive(Serializable, Deserializable, Debug)]
+#[derive(Serializable, Deserializable, Debug, Clone)]
 pub struct CompactBlock {
     header: BlockHeader,
     nonce: u64,

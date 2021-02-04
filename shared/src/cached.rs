@@ -4,9 +4,11 @@ use bytes::Buf;
 /// A Cached type is an option that is never serialized.
 ///
 /// It can be added to any struct without risking a consensus break.
-pub struct Cached<T>(Option<T>);
+#[derive(Clone)]
 
-impl<T> Cached<T> {
+pub struct Cached<T: Clone>(Option<T>);
+
+impl<T: Clone> Cached<T> {
     pub fn new() -> Cached<T> {
         Cached(None)
     }
@@ -27,7 +29,7 @@ impl<T> Cached<T> {
     }
 }
 
-impl<T> std::fmt::Debug for Cached<T>
+impl<T: Clone> std::fmt::Debug for Cached<T>
 where
     T: std::fmt::Debug,
 {
@@ -37,7 +39,7 @@ where
         Ok(())
     }
 }
-impl<T> Serializable for Cached<T> {
+impl<T: Clone> Serializable for Cached<T> {
     fn serialize<W>(&self, _: &mut W) -> Result<(), std::io::Error>
     where
         W: std::io::Write,
@@ -45,7 +47,7 @@ impl<T> Serializable for Cached<T> {
         Ok(())
     }
 }
-impl<T> shared::Deserializable for Cached<T> {
+impl<T: Clone> shared::Deserializable for Cached<T> {
     fn deserialize<B: Buf>(_: B) -> std::result::Result<Self, shared::DeserializationError> {
         Ok(Cached(None))
     }

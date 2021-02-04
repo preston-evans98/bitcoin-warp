@@ -1,4 +1,4 @@
-use super::{ProtocolVersion, Services};
+use super::{Nonce, ProtocolVersion, Services};
 use bytes::Buf;
 use config::Config;
 use serde_derive::{Deserializable, Serializable};
@@ -6,7 +6,7 @@ use shared::{CompactInt, Serializable};
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Deserializable, Serializable, Debug)]
+#[derive(Deserializable, Serializable, Debug, Clone)]
 pub struct Version {
     protocol_version: ProtocolVersion,
     services: Services,
@@ -15,7 +15,7 @@ pub struct Version {
     receiver: SocketAddr,
     transmitter_services: Services,
     transmitter_ip: SocketAddr,
-    nonce: u64,
+    nonce: Nonce,
     user_agent: String,
     best_block: u32,
     relay: bool,
@@ -41,6 +41,39 @@ impl Version {
             best_block: best_block,
             relay: true,
         }
+    }
+    pub fn protocol_version(&self) -> ProtocolVersion {
+        self.protocol_version
+    }
+    pub fn services(&self) -> Services {
+        self.services
+    }
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
+    pub fn receiver_services(&self) -> Services {
+        self.receiver_services
+    }
+    pub fn receiver(&self) -> &SocketAddr {
+        &self.receiver
+    }
+    pub fn transmitter_services(&self) -> Services {
+        self.transmitter_services
+    }
+    pub fn transmitter_ip(&self) -> &SocketAddr {
+        &self.transmitter_ip
+    }
+    pub fn nonce(&self) -> Nonce {
+        self.nonce
+    }
+    pub fn user_agent(&self) -> &String {
+        &self.user_agent
+    }
+    pub fn best_block(&self) -> u32 {
+        self.best_block
+    }
+    pub fn relay(&self) -> bool {
+        self.relay
     }
 }
 

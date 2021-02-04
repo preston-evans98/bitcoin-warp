@@ -2,7 +2,7 @@ use bytes::Buf;
 use serde_derive::Serializable;
 use shared::{CompactInt, Deserializable, DeserializationError, Transaction};
 
-#[derive(Serializable, Debug)]
+#[derive(Serializable, Debug, Clone)]
 pub struct PrefilledTransaction {
     index: CompactInt,
     tx: Transaction,

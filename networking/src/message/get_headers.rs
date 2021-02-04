@@ -4,7 +4,7 @@ use config::Config;
 use serde_derive::{Deserializable, Serializable};
 use shared::{BlockHash, CompactInt, Serializable};
 use tracing::warn;
-#[derive(Serializable, Deserializable, Debug)]
+#[derive(Serializable, Deserializable, Debug, Clone)]
 pub struct GetHeaders {
     protocol_version: ProtocolVersion,
     block_header_hashes: Vec<BlockHash>,

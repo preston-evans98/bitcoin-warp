@@ -2,7 +2,7 @@ use crate::u256;
 use crate::{Deserializable, DeserializationError, Serializable};
 use bytes::Buf;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Debug, Clone)]
 pub enum InventoryType {
     Tx = 1,
     Block = 2,
@@ -44,7 +44,7 @@ impl Deserializable for InventoryType {
         }
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InventoryData {
     pub inventory_type: InventoryType,
     pub hash: u256,

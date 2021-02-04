@@ -1,8 +1,3 @@
-// use crate::command::Command;
-// use crate::header::Header;
-// use shared::Bytes;
-// use tokio::net::TcpStream;
-
 use crate::types::{Nonce, PrefilledTransaction, ProtocolVersion, Services};
 use crate::Command;
 use serde_derive::Serializable;
@@ -51,7 +46,7 @@ pub trait Payload {
 ///
 /// Messages are actual messages, as opposed to [`Command`s](crate::Command) which are a shorthand way of referring to a type of Message.
 /// A Message takes about 90 bytes of data on the stack, while a Command is a single byte.
-#[derive(Debug, Serializable)]
+#[derive(Debug, Serializable, Clone)]
 pub enum Message {
     Addr(Vec<EncapsulatedAddr>),
     BlockTxn(BlockTxn),
