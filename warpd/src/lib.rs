@@ -10,7 +10,7 @@ use std::sync::Arc;
 /// The Bitcoin Warp Daemon
 #[derive(Debug)]
 pub struct Warpd {
-    pub config: Arc<Config>,
+    pub config: Config,
     conn_man: ConnectionManager,
 }
 
@@ -23,12 +23,12 @@ impl ConnectionManager {
     pub fn new() -> ConnectionManager {
         ConnectionManager { peers: Vec::new() }
     }
-    pub async fn add(&mut self, addr: SocketAddr, config: &Arc<Config>) -> Result<(), PeerError> {
-        let peer = Peer::at_address(self.num_peers(), addr, config.clone()).await?;
+    pub async fn add(&mut self, addr: SocketAddr, config: &Config) -> Result<(), PeerError> {
+        let peer = Peer::at_address(addr, config.clone()).await?;
         self.peers.push(peer);
         Ok(())
     }
-    pub async fn accept(&mut self, port: &str, config: &Arc<Config>) -> Result<(), PeerError> {
+    pub async fn accept(&mut self, port: &str, config: &Config) -> Result<(), PeerError> {
         let addr = format!("127.0.0.1:{}", port);
         let listener = tokio::net::TcpListener::bind(&addr)
             .await
@@ -52,7 +52,7 @@ impl ConnectionManager {
 impl Warpd {
     pub fn new() -> Warpd {
         Warpd {
-            config: Arc::new(Config::mainnet()),
+            config: Config::mainnet(),
             conn_man: ConnectionManager::new(),
         }
     }

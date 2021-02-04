@@ -1,10 +1,11 @@
-use crate::{command::Command, BitcoinCodec, Message};
+use crate::{command::Command, BitcoinCodec, Message, NetworkRequest, NetworkResponse};
 use config::Config;
-use futures::prelude::*;
+use futures::{prelude::*, FutureExt};
 use shared::DeserializationError;
-use std::net::SocketAddr;
 use std::time::Duration;
 use std::{fmt, sync::Arc};
+use std::{net::SocketAddr, pin::Pin};
+use tower::Service;
 // use tower::Service;
 // use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
@@ -52,7 +53,7 @@ impl fmt::Display for PeerError {
             PeerError::Malicious(cause) => cause.fmt(f),
             PeerError::ConnectionClosed => Ok(()),
             PeerError::Unexpected(cause) => cause.fmt(f),
-            PeerError::MessageRejected(cause)=> cause.fmt(f),
+            PeerError::MessageRejected(cause) => cause.fmt(f),
         }
     }
 }
@@ -71,31 +72,37 @@ pub struct Peer {
     daemon_protocol_version: u32,
     services: u64,
     connection: Framed<TcpStream, BitcoinCodec>,
-    config: Arc<Config>,
+    config: Config,
     span: Span,
 }
 
 impl Peer {
-    pub async fn at_address(id: usize, address: SocketAddr, config: Arc<Config>) -> Result<Peer> {
-        info!("Peer {}: Opening connection to {:?}...", id, address.ip());
-        let connection = timeout(Duration::from_secs(5), TcpStream::connect(address)).await??;
-        let codec = BitcoinCodec::new(config.magic());
-        info!("Peer {}: Connected", id);
-        Ok(Peer {
-            peer_id: id,
-            ip_address: address,
-            nonce: 0,
-            daemon_address: connection
-                .local_addr()
-                .expect("Connection should have a local address"),
-            daemon_protocol_version: config.get_protocol_version(),
-            services: 0,
-            connection: Framed::new(connection, codec),
-            config,
-            span: trace_span!("peer", id = id),
-        })
+    pub fn at_address(
+        address: SocketAddr,
+        config: Config,
+    ) -> Pin<Box<dyn Future<Output = Result<Peer>> + Send>> {
+        async move {
+            info!("Peer: Opening connection to {:?}...", address.ip());
+            let connection = timeout(Duration::from_secs(5), TcpStream::connect(address)).await??;
+            let codec = BitcoinCodec::new(config.magic());
+            info!("Peer: Connected");
+            Ok(Peer {
+                peer_id: 0,
+                ip_address: address,
+                nonce: 0,
+                daemon_address: connection
+                    .local_addr()
+                    .expect("Connection should have a local address"),
+                daemon_protocol_version: config.get_protocol_version(),
+                services: 0,
+                connection: Framed::new(connection, codec),
+                config,
+                span: trace_span!("peer"),
+            })
+        }
+        .boxed()
     }
-    pub async fn from_connection(id: usize, connection: TcpStream, config: Arc<Config>) -> Peer {
+    pub async fn from_connection(id: usize, connection: TcpStream, config: Config) -> Peer {
         let codec = BitcoinCodec::new(config.magic());
         info!("Receiving from {:?}", connection.peer_addr());
         Peer {
@@ -182,21 +189,18 @@ impl Peer {
     }
 }
 
-// impl Service<NetworkRequest> for Peer {
-//     type Response;
+impl Service<NetworkRequest> for Peer {
+    type Response = NetworkResponse;
 
-//     type Error;
+    type Error = PeerError;
 
-//     type Future;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response>> + Send + 'static>>;
 
-//     fn poll_ready(
-//         &mut self,
-//         cx: &mut std::task::Context<'_>,
-//     ) -> std::task::Poll<Result<(), Self::Error>> {
-//         todo!()
-//     }
+    fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<()>> {
+        todo!()
+    }
 
-//     fn call(&mut self, req: NetworkRequest) -> Self::Future {
-//         todo!()
-//     }
-// }
+    fn call(&mut self, req: NetworkRequest) -> Self::Future {
+        todo!()
+    }
+}

@@ -17,7 +17,7 @@ tokio = { version = "1.0.0", features = ["full"] }
 tokio-util = { version = "0.6.0", features = ["codec"] } 
 bytes = "1.0.0" 
 tracing = "0.1.22" 
-tower = { version = "0.4", features = ["discover", "load", "ready-cache"] }
+tower = { version = "0.4", features = ["discover", "load", "ready-cache", "balance"] }
 
 [dev-dependencies]
 hex = "0.4.2"

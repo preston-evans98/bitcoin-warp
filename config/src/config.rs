@@ -19,7 +19,7 @@ const MAX_PEERS_MAINNET: usize = 10;
 const MAX_PEERS_TESTNET: usize = 10;
 const MAX_PEERS_REGTEST: usize = 10;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Config {
     client_version: String,
     protocol_version: u32,
@@ -30,7 +30,7 @@ pub struct Config {
     network_config: NetworkConfig,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NetworkConfig {
     core_port: usize,
     warp_port: usize,
@@ -40,7 +40,7 @@ pub struct NetworkConfig {
     max_warp_peers: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Network {
     Mainnet,
     Testnet,

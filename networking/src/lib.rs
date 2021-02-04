@@ -33,7 +33,10 @@ mod server;
 mod interface;
 pub use interface::{NetworkRequest, NetworkResponse};
 
-mod peers;
+mod address_book;
+mod constants;
+mod crawler;
+mod peer_set;
 
 // mod messages;
 // pub use messages::Addr;
